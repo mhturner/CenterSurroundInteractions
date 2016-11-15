@@ -3,10 +3,10 @@ clear list; clear all; clear java; close all; clc; %#ok<CLJAVA,CLALL>
 loader = edu.washington.rieke.Analysis.getEntityLoader();
 treeFactory = edu.washington.rieke.Analysis.getEpochTreeFactory();
 dataFolder = '/Users/maxturner/CurrentData/RFSurround/'; 
-saveFileDirectory = '~/Documents/MATLAB/Analysis/Projects/RFSurround/SavedTreeFlags/';
+saveFileDirectory = '~/Documents/MATLAB/RFSurround/resources/SavedTreeFlags/';
 import auimodel.*
 import vuidocument.*
-cd('~/Documents/MATLAB/Analysis/Projects/RFSurround/')
+cd('~/Documents/MATLAB/RFSurround/')
 %% EXPANDING SPOTS: tree
 % saveFileID = 'ES_HorizontalCellNegative';
 
@@ -187,7 +187,7 @@ tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
 
 gui = epochTreeGUI(tree);
 %% NatImageCSAdditivity simple plots
-%select image name node
+%select patch sampling node
 parentNode = gui.getSelectedEpochTreeNodes{1};
 
 responses = zeros(1,3); %c, s, cs
@@ -200,13 +200,13 @@ for pp = 1:parentNode.children.length
             continue
         end
         ct = ct + 1;
-        tempCenter = getResponseAmplitudeStats(locationNode.childBySplitValue('Center').epochList,'extracellular');
+        tempCenter = getResponseAmplitudeStats(locationNode.childBySplitValue('Center').epochList,'exc');
         responses(ct,1) = tempCenter.integrated.mean;
 
-        tempSurround = getResponseAmplitudeStats(locationNode.childBySplitValue('Surround').epochList,'extracellular');
+        tempSurround = getResponseAmplitudeStats(locationNode.childBySplitValue('Surround').epochList,'exc');
         responses(ct,2) = tempSurround.integrated.mean;
 
-        tempCS = getResponseAmplitudeStats(locationNode.childBySplitValue('Center-Surround').epochList,'extracellular');
+        tempCS = getResponseAmplitudeStats(locationNode.childBySplitValue('Center-Surround').epochList,'exc');
         responses(ct,3) = tempCS.integrated.mean;
 
     end
