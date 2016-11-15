@@ -3,10 +3,10 @@ clear list; clear all; clear java; close all; clc; %#ok<CLJAVA,CLALL>
 loader = edu.washington.rieke.Analysis.getEntityLoader();
 treeFactory = edu.washington.rieke.Analysis.getEpochTreeFactory();
 dataFolder = '/Users/maxturner/CurrentData/RFSurround/';
-saveFileDirectory = '~/Documents/MATLAB/Analysis/Projects/RFSurround/SavedTreeFlags/';
+saveFileDirectory = '~/Documents/MATLAB/RFSurround/resources/SavedTreeFlags/';
 import auimodel.*
 import vuidocument.*
-cd('~/Documents/MATLAB/Analysis/Projects/RFSurround/')
+cd('~/Documents/MATLAB/RFSurround/')
 
 %% CONTRAST RESPONSE SPOTS: tree
 
@@ -566,7 +566,7 @@ tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
 gui = epochTreeGUI(tree);
 
 %% CS eye movement luminance - simple plots
-PSTHsigma = 20; %msec
+PSTHsigma = 50; %msec
 parentNode = gui.getSelectedEpochTreeNodes{1};
 
 
@@ -608,26 +608,120 @@ tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
 
 gui = epochTreeGUI(tree);
 
-%% select recType node
+%% flag imageID node for example ON and OFF 
 
 parentNode = gui.getSelectedEpochTreeNodes{1};
 
 centerStims = {'Image','none','Image','Equiv','none','Equiv','Image','Equiv'};
 surroundStims = {'none','Image','Image','none','Equiv','Equiv','Equiv','Image'};
-        
-allResp = {};
-for im = 1:parentNode.children.length
-responseMatrix = [];
-for cc = 1:8
-    currentNode = parentNode.children(im).childBySplitValue(centerStims{cc}).childBySplitValue(surroundStims{cc});
-    for ii = 1:currentNode.children.length
-        newResp = getResponseAmplitudeStats(currentNode.children(ii).epochList,'extracellular');
-        responseMatrix(ii,cc) = newResp.integrated.mean;
+
+populationNodes = {};
+ct = 0;
+for nn = 1:parentNode.descendentsDepthFirst.length
+    if strcmp(parentNode.descendentsDepthFirst(nn).splitKey,...
+            'protocolSettings(currentCenter)') && parentNode.descendentsDepthFirst(nn).custom.get('isSelected')
+        ct = ct + 1;
+        populationNodes(ct) = parentNode.descendentsDepthFirst(nn);
     end
 end
-allResp{im} = responseMatrix;
+
+clear responseMatrix
+responseMatrix.ON = [];
+responseMatrix.OFF = [];
+for pp = 1:2
+    if pp == 1
+        fieldName = 'OFF'; 
+    elseif pp == 2
+        fieldName = 'ON'; 
+    end
+    for cc = 1:8
+        currentNode = populationNodes{pp}.childBySplitValue(centerStims{cc}).childBySplitValue(surroundStims{cc});
+        for ii = 1:currentNode.children.length
+            newResp = getResponseAmplitudeStats(currentNode.children(ii).epochList,'extracellular');
+            responseMatrix.(fieldName)(ii,cc) = newResp.integrated.mean;
+        end
+    end
+end
+%% Figures for COSYNE abstract:
+
+%Linearity of surround:
+figure(2); clf;
+fig1=gca;
+set(fig1,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig1,'XLabel'),'String','Center + image surround (spikes)')
+set(get(fig1,'YLabel'),'String','Center + linear surround (spikes)')
+
+colors = pmkmp(3);
+
+addLineToAxis(responseMatrix.ON(:,3),responseMatrix.ON(:,7),...
+    'ONdata',fig1,colors(1,:),'none','o')
+addLineToAxis(responseMatrix.OFF(:,3),responseMatrix.OFF(:,7),...
+    'OFFdata',fig1,colors(2,:),'none','o')
+
+addLineToAxis([0 30],[0 30],...
+    'unity',fig1,'k',':','none')
+
+makeAxisStruct(fig1,'LECS_parasols' ,'COSYNE2017Figs')
+
+
+%%
+clc;
+load('NaturalImageFlashLibrary_101716.mat')
+imageNames = fieldnames(imageData);
+resourcesDir = '~/Documents/MATLAB/turner-package/resources';
+patchSize = 100; %pixels
+MicronsPerPixel = 6.6;
+patchesPerImage = 100;
+ImageID = 'imk03093';
+
+RFmodel = ThreeLayerReceptiveFieldModel;
+RFmodel.MicronsPerPixel = MicronsPerPixel;
+RFmodel.makeRfComponents(patchSize);
+
+ImageX = 1536; ImageY = 1024;
+
+fileId=fopen([resourcesDir, '/VHsubsample_20160105', '/', ImageID,'.iml'],'rb','ieee-be');
+img = fread(fileId, [1536,1024], 'uint16');
+contrastImg = img - mean(img(:));
+contrastImg = contrastImg ./ max(contrastImg(:));
+
+noBins = 2.*patchesPerImage; %from no. image patches to show
+[N, edges, bin] = histcounts(imageData.(ImageID).responseDifferences,noBins);
+populatedBins = unique(bin);
+%pluck one patch from each bin
+pullInds = arrayfun(@(b) find(b == bin,1),populatedBins);
+location = imageData.(ImageID).location(pullInds,:);
+
+tempResponse = struct;
+tempResponse.SubunitCenterPlusLinearSurround = [];
+tempResponse.SubunitCenterPlusSubunitSurround = [];
+for rr = 1:patchesPerImage
+    x = location(rr,1); y = location(rr,2);
+    % get patch
+    ContrastPatch = -contrastImg(x-patchSize/2+1:x+patchSize/2,y-patchSize/2+1:y+patchSize/2);
+    % get RF model responses
+    responseStructure = RFmodel.getResponse(ContrastPatch);
+    tempResponse.SubunitCenterPlusLinearSurround(rr) = responseStructure.CenterSurround.SharedNonlinearity;
+    tempResponse.SubunitCenterPlusSubunitSurround(rr) = responseStructure.CenterSurround.LNLNSamePolarity;
 end
 
+figure(3); clf;
+fig2=gca;
+set(fig2,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig2,'XLabel'),'String','Center + nonlinear surround')
+set(get(fig2,'YLabel'),'String','Center + linear surround')
+
+colors = pmkmp(3);
+
+
+addLineToAxis(tempResponse.SubunitCenterPlusSubunitSurround,tempResponse.SubunitCenterPlusLinearSurround,...
+    'modelResp',fig2,colors(2,:),'none','o')
+addLineToAxis([0 0.3],[0 0.3],...
+    'unity',fig2,'k',':','none')
+
+% makeAxisStruct(fig2,'LECS_model' ,'COSYNE2017Figs')
 %% % % % % Linearity of center modulated by surround % % % % % % 
 colors = hsv(length(allResp) + 1);
 for im = 1:length(allResp);

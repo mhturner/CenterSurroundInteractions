@@ -2,7 +2,7 @@ clear all; close all; clc;
 load('NaturalImageFlashLibrary_101716.mat')
 imageNames = fieldnames(imageData);
 resourcesDir = '~/Documents/MATLAB/turner-package/resources';
-patchSize = 80; %pixels
+patchSize = 100; %pixels
 MicronsPerPixel = 6.6;
 patchesPerImage = 5e2;
 noBins = 8;
@@ -147,40 +147,6 @@ h6 = plot(binCenters,meanCorr,'g-o');
 legend([h1 h2 h3 h4 h5 h6],'Image: spatial contrast','LN center','Subunit center',...
     'LN center-surround','Subunit center + linear surround','Subunit center + subunit surround')
     
-%% get parameters of RF models s.t. surround strength is == across models
-
-corrFieldNames = {'imageContrast','LNcenter','subunitCenter','LNCenterSurround',...
-    'SubunitCenterPlusLinearSurround','SubunitCenterPlusSubunitSurround'};
-
-patchSize = 120; %pixels
-MicronsPerPixel = 6.6;
-RFmodel = ThreeLayerReceptiveFieldModel;
-RFmodel.SubunitSurroundWeight = 0.9;
-RFmodel.SurroundSubunitSigma = 12;
-RFmodel.SubunitSurroundSamplingSigma = 150;
-RFmodel.MicronsPerPixel = MicronsPerPixel;
-RFmodel.makeRfComponents(patchSize);
-
-%expanding spots...
-spotSize = [5:5:patchSize];
-[rr, cc] = meshgrid(1:patchSize,1:patchSize);
-response.LNCenterSurround = [];
-response.SubunitCenterPlusLinearSurround = [];
-response.SubunitCenterPlusSubunitSurround = [];
-for ss = 1:length(spotSize) %get responses to each spot
-    currentRadius = spotSize(ss)/2;
-    spotBinary = double(sqrt((rr-(patchSize/2)).^2+(cc-(patchSize/2)).^2)<=currentRadius);
-    responseStructure = RFmodel.getResponse(spotBinary);
-    
-    response.LNCenterSurround(ss) = responseStructure.CenterSurround.LN;
-    response.SubunitCenterPlusLinearSurround(ss) = responseStructure.CenterSurround.SharedNonlinearity;
-    response.SubunitCenterPlusSubunitSurround(ss) = responseStructure.CenterSurround.LNLNSamePolarity;
-end
-spotSize = spotSize .* MicronsPerPixel;
-figure(2); clf; hold on
-plot(spotSize,response.LNCenterSurround ./ max(response.LNCenterSurround),'b-')
-plot(spotSize,response.SubunitCenterPlusLinearSurround ./ max(response.SubunitCenterPlusLinearSurround),'r-o')
-plot(spotSize,response.SubunitCenterPlusSubunitSurround ./ max(response.SubunitCenterPlusSubunitSurround),'k-')
 
 
 
@@ -253,9 +219,3 @@ binCenters = edges(1:end-1) + diff(edges);
 
 hold on;
 semilogy(binCenters, p,'b')
-%%
-% 3, 7, 13, 14, 18
-fileId=fopen([resourcesDir, '/VHsubsample_20160105', '/', imageNames{20},'.iml'],'rb','ieee-be');
-img = fread(fileId, [1536,1024], 'uint16');
-    
-figure(1); clf; imagesc(img'); colormap(gray)
