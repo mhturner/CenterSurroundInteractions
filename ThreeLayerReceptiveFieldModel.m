@@ -1,13 +1,13 @@
 classdef ThreeLayerReceptiveFieldModel < handle
     
     properties
-        SurroundSubunitSigma = 50; % (microns) gaussian subunits, samples pixels (~horizontal cell subunits)
+        SurroundSubunitSigma = 24; % (microns) gaussian subunits, samples pixels (~horizontal cell subunits)
         
         CenterSubunitSigma = 12; %gaussian subunits, samples pixels (~bipolar cell center)
-        SubunitSurroundSamplingSigma = 100; %sigma, samples surround units (~bipolar cell surround)
+        SubunitSurroundSamplingSigma = 120; %sigma, samples surround units (~bipolar cell surround)
         SubunitSurroundWeight = 0.8; %As a fraction of subunit center weight
 
-        CenterSamplingSigma = 50; %samples layer 2 subunits
+        CenterSamplingSigma = 40; %samples layer 2 subunits
         
         MicronsPerPixel = 3.3; %microns
 
@@ -85,6 +85,30 @@ classdef ThreeLayerReceptiveFieldModel < handle
             subunitOutputs(subunitOutputs < 0) = 0; %rectify subunit outputs
             responseStructure.CenterSurround.LNLNSamePolarity =...
                 sum(subunitOutputs.* obj.sampleWeights.Center);
+            
+            % 7) R = N(linear center - nonlinear surround)
+            SurroundInputToEachSubunit = ...
+                max(0,obj.sampleWeights.SubunitWeightMatrix * obj.SubunitActivation.SurroundSubunits);
+            TotalSurroundInput = sum(SurroundInputToEachSubunit .* obj.sampleWeights.Center);
+            responseStructure.CenterSurround.LinearCenterPlusNonlinearSurround = ...
+                max(0, LinearCenterActivation - TotalSurroundInput);
+            
+            % DIVISIVE models:
+            additiveConstant = 0.01;
+            % linCenter & surround
+            linCenter = max(0, LinearCenterActivation);
+            linSurround = max(0,LinearSurroundActivation);
+            % nlCenter
+            nlCenter = responseStructure.CenterOnly.NonlinearSubunits;
+            % nlSurround
+            SurroundInputToEachSubunit = ...
+                max(0,obj.sampleWeights.SubunitWeightMatrix * obj.SubunitActivation.SurroundSubunits);
+            nlSurround = sum(SurroundInputToEachSubunit .* obj.sampleWeights.Center);
+            
+            responseStructure.DivisiveSurround.linC_linS = linCenter / (linSurround + additiveConstant);
+            responseStructure.DivisiveSurround.linC_nlS = linCenter / (nlSurround + additiveConstant);
+            responseStructure.DivisiveSurround.nlC_linS = nlCenter / (linSurround + additiveConstant);
+            responseStructure.DivisiveSurround.nlC_nlS = nlCenter / (nlSurround + additiveConstant);
             
         end
         
