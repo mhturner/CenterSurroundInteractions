@@ -68,273 +68,14 @@ end
 gui = epochTreeGUI(tree);
 
 %% CENTER SURROUND NOISE: example cell plotting
-% choose rec type node
-clc
-
-numberOfBins = 8^2;
-
+% flag rec type nodes in population
+% select cell type node
+clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
-cellInfo = getCellInfoFromEpochList(parentNode.epochList);
-recType = getRecordingTypeFromEpochList(parentNode.epochList);
+doCSLNAnalysis(parentNode,...
+    'bins2D',6^2,...
+    'bins1D',20);
 
-% % % % % % % % GET LINEAR FILTERS AND GENERATOR SIGNALS % % % % % % % % % % % % % % % % 
-% center:
-center = getLinearFilterAndPrediction(parentNode.childBySplitValue('Center').epochList,recType,...
-    'seedName','centerNoiseSeed','numberOfBins',numberOfBins);
-% surround:
-surround = getLinearFilterAndPrediction(parentNode.childBySplitValue('Surround').epochList,recType,...
-    'seedName','surroundNoiseSeed','numberOfBins',numberOfBins);
-% center + surround: just to test against measured response
-centerSurround = getLinearFilterAndPrediction(parentNode.childBySplitValue('Center-Surround').epochList,recType,...
-    'seedName','centerNoiseSeed','numberOfBins',numberOfBins);
-
-figure(2); clf;
-subplot(321)
-plot(center.filterTimeVector,center.LinearFilter,'b');
-xlabel('Time (s)'); title('Center')
-subplot(322)
-plot(surround.filterTimeVector,surround.LinearFilter,'r');
-xlabel('Time (s)'); title('Surround')
-
-% % % % % % % % MODEL FITTING % % % % % % % % % % % % % % % % 
-epochLen = length(centerSurround.measuredResponse) / centerSurround.n;
-epochToHold = 5; %epoch number to hold out
-testDataInds = ((epochToHold-1)*epochLen + 1):(epochToHold*epochLen);
-fitDataInds = setdiff(1:length(centerSurround.measuredResponse),testDataInds);
-
-%bin up and shape training data:
-[~,centerGS,~,centerBinID] = ...
-    histcounts_equallyPopulatedBins(center.generatorSignal(fitDataInds),sqrt(numberOfBins));
-[~,surroundGS,~,surroundBinID] = ...
-    histcounts_equallyPopulatedBins(surround.generatorSignal(fitDataInds),sqrt(numberOfBins));
-responseMean = zeros(sqrt(numberOfBins));
-for xx = 1:sqrt(numberOfBins)
-    for yy = 1:sqrt(numberOfBins)
-        jointInds = intersect(find(centerBinID == xx),find(surroundBinID == yy));
-        tempResp = centerSurround.measuredResponse(fitDataInds);
-        responseMean(yy,xx) = mean(tempResp(jointInds));
-    end
-end
-%Fit Joint nonlinearity model:
-% params = [alpha mu1 mu2 std1 std2 corr12 epsilon]
-params0 = [max(responseMean(:)), 400, 0,50, 50,0 0];
-fitRes_joint = fitNLinearity_2D(centerGS,surroundGS,responseMean,params0);
-
-cc = linspace(min(centerGS),max(centerGS),20);
-ss = linspace(min(surroundGS),max(surroundGS),20);
-[CC,SS] = meshgrid(cc',ss');
-fitSurface = JointNLin_mvcn(CC(:)',SS(:)',fitRes_joint.alpha,fitRes_joint.mu,fitRes_joint.sigma,fitRes_joint.epsilon);
-fitSurface = reshape(fitSurface,length(ss),length(cc));
-
-figure(2);
-subplot(325); hold on;
-stem3(centerGS,surroundGS,responseMean,'filled');
-xlabel('Center'); ylabel('Surround'); zlabel('Response (pA)')
-meshc(CC,SS,fitSurface)
-title('Joint')
-view(4,10);
-
-% Fit Independent nonlinearity model:
-%params is [alphaC, betaC, gammaC,...
-%           alphaS, betaS, gammaS, epsilon]
-params0 = [max(responseMean(:)), 0.002, -0.5,...
-    max(responseMean(:)), 0.01, -1,...
-    -400];
-fitRes_indep = fitCSModel_IndependentNL(centerGS,surroundGS,responseMean,params0);
-
-fitSurface = CSModel_IndependentNL(CC(:)',SS(:)',...
-    fitRes_indep.alphaC,fitRes_indep.betaC,...
-    fitRes_indep.gammaC,fitRes_indep.alphaS,...
-    fitRes_indep.betaS,fitRes_indep.gammaS,fitRes_indep.epsilon);
-
-fitSurface = reshape(fitSurface,length(ss),length(cc));
-
-figure(2);
-subplot(323); hold on;
-plot(center.nonlinearity.fitXX,center.nonlinearity.fitYY,'b')
-plot(surround.nonlinearity.fitXX,surround.nonlinearity.fitYY,'r')
-
-figure(2);
-subplot(324); hold on;
-stem3(centerGS,surroundGS,responseMean,'filled');
-xlabel('Center'); ylabel('Surround'); zlabel('Response (pA)')
-meshc(CC,SS,fitSurface)
-title('Indep.')
-view(4,10);
-
-% Fit Shared nonlinearity model:
-% params is [a, alpha, beta, gamma, epsilon]
-params0=[2, max(responseMean(:)), 0.01, 0, 0]';
-fitRes_shared = fitCSModel_SharedNL(centerGS,surroundGS,responseMean,params0);
-
-fitSurface = CSModel_SharedNL(CC(:)',SS(:)',...
-    fitRes_shared.a,fitRes_shared.alpha,fitRes_shared.beta,...
-    fitRes_shared.gamma,fitRes_shared.epsilon);
-fitSurface = reshape(fitSurface,length(ss),length(cc));
-
-figure(2);
-subplot(326); hold on;
-stem3(centerGS,surroundGS,responseMean,'filled');
-xlabel('Center'); ylabel('Surround'); zlabel('Response (pA)')
-meshc(CC,SS,fitSurface)
-title('Shared')
-view(4,10);
-
-% % % % % % % % PREDICTIONS % % % % % % % % % % % % % % % % 
-centerGS = center.generatorSignal(testDataInds);
-surroundGS = surround.generatorSignal(testDataInds);
-measuredResponse = centerSurround.measuredResponse(testDataInds);
-
-centerAloneResponse = center.measuredResponse(testDataInds);
-surroundAloneResponse = surround.measuredResponse(testDataInds);
-
-linearSummedResponse = centerAloneResponse + surroundAloneResponse;
-
-predictedResponse_joint = JointNLin_mvcn(centerGS, surroundGS,...
-    fitRes_joint.alpha,fitRes_joint.mu,fitRes_joint.sigma,fitRes_joint.epsilon);
-
-predictedResponse_indep = CSModel_IndependentNL(centerGS, surroundGS,...
-    fitRes_indep.alphaC,fitRes_indep.betaC,...
-    fitRes_indep.gammaC,fitRes_indep.alphaS,...
-    fitRes_indep.betaS,fitRes_indep.gammaS,fitRes_indep.epsilon);
-
-predictedResponse_shared = CSModel_SharedNL(centerGS, surroundGS,...
-    fitRes_shared.a,fitRes_shared.alpha,fitRes_shared.beta,...
-    fitRes_shared.gamma,fitRes_shared.epsilon);
-
-%Model predictions:
-figure(3); clf;
-subplot(331); hold on;
-plot(predictedResponse_joint, measuredResponse, 'go')
-cc = corr(predictedResponse_joint, measuredResponse');
-title(num2str(cc))
-xlabel('Predicted'); ylabel('Measured');
-subplot(3,3,2:3); hold on
-plot(predictedResponse_joint, 'g')
-plot(measuredResponse, 'k')
-title('Joint')
-
-subplot(334); hold on;
-plot(predictedResponse_indep, measuredResponse, 'bo')
-cc = corr(predictedResponse_indep', measuredResponse');
-title(num2str(cc))
-xlabel('Predicted'); ylabel('Measured');
-subplot(3,3,5:6); hold on
-plot(predictedResponse_indep, 'b')
-plot(measuredResponse, 'k')
-title('Indep')
-
-subplot(337); hold on;
-plot(predictedResponse_shared, measuredResponse, 'ro')
-cc = corr(predictedResponse_shared', measuredResponse');
-title(num2str(cc))
-xlabel('Predicted'); ylabel('Measured');
-subplot(3,3,8:9); hold on
-plot(predictedResponse_shared, 'r')
-plot(measuredResponse, 'k')
-title('Shared')
-
-%CS versus response to c or s alone:
-figure(4); clf;
-subplot(331); hold on;
-plot(centerAloneResponse, measuredResponse, 'go')
-cc = corr(centerAloneResponse', measuredResponse');
-title(num2str(cc))
-xlabel('R(C)'); ylabel('R(C + S)');
-subplot(3,3,2:3); hold on
-plot(centerAloneResponse, 'g')
-plot(measuredResponse, 'k')
-title('Center alone')
-
-subplot(334); hold on;
-plot(surroundAloneResponse, measuredResponse, 'bo')
-cc = corr(surroundAloneResponse', measuredResponse');
-title(num2str(cc))
-xlabel('R(S)'); ylabel('R(C + S)');
-subplot(3,3,5:6); hold on
-plot(surroundAloneResponse, 'b')
-plot(measuredResponse, 'k')
-title('Surround alone')
-
-subplot(337); hold on;
-plot(linearSummedResponse, measuredResponse, 'ro')
-cc = corr(linearSummedResponse', measuredResponse');
-title(num2str(cc))
-xlabel('R(C) + R(S)'); ylabel('R(C + S)');
-subplot(3,3,8:9); hold on
-plot(linearSummedResponse, 'r')
-plot(measuredResponse, 'k')
-title('Linear sum')
-
-%% Slices through joint nonlinearity: does center nlin change with surround?
-[~,centerGS,~,centerBinID] = ...
-    histcounts_equallyPopulatedBins(center.generatorSignal(fitDataInds),sqrt(numberOfBins));
-[~,surroundGS,~,surroundBinID] = ...
-    histcounts_equallyPopulatedBins(surround.generatorSignal(fitDataInds),sqrt(numberOfBins));
-responseMean = zeros(sqrt(numberOfBins));
-for xx = 1:sqrt(numberOfBins)
-    for yy = 1:sqrt(numberOfBins)
-        jointInds = intersect(find(centerBinID == xx),find(surroundBinID == yy));
-        tempResp = centerSurround.measuredResponse(fitDataInds);
-        responseMean(yy,xx) = mean(tempResp(jointInds));
-    end
-end
-
-
-figure(7); clf;
-subplot(211); hold on;
-p.z = plot([0 0.5],[0 0],'k--');
-p.c = plot(center.filterTimeVector,center.LinearFilter,'b');
-xlabel('Time (s)'); xlim([0 0.5]); title('Center');
-subplot(212); hold on;
-p.z = plot([0 0.5],[0 0],'k--');
-p.s = plot(surround.filterTimeVector,surround.LinearFilter,'r');
-xlabel('Time (s)'); xlim([0 0.5]); title('Surround');
-
-figure(8); clf; subplot(211)
-mesh(centerGS,surroundGS,responseMean);
-xlabel('Center'); ylabel('Surround'); zlabel('Response (pA)')
-
-figure(8); subplot(212); hold on;
-plot([0 0],[min(responseMean(:)) max(responseMean(:))],'k--')
-plot([min(centerGS(:)) max(centerGS(:))],[0 0], 'k--')
-colors = jet(length(surroundGS));
-for ss = 1:length(surroundGS)
-    p.(['s',num2str(ss)]) = plot(centerGS,responseMean(ss,:),'Color',colors(ss,:));
-end
-
-xlim([min(centerGS(:)) max(centerGS(:))]);
-ylim([min(responseMean(:)) max(responseMean(:))]);
-
-xlabel('Center activation'); ylabel('Response (pA)')
-legend([p.s1, p.s8], ['Surround ',num2str(surroundGS(1))],['Surround ',num2str(surroundGS(8))])
-%%
-
-figure(9); clf; subplot(211); hold on;
-colors = jet(length(surroundGS));
-plot([0 0],[min(responseMean(:)) max(responseMean(:))],'k--')
-plot([min(centerGS + surroundGS) max(centerGS + surroundGS)],[0 0], 'k--')
-for ii = 1:8
-   currentX = centerGS(ii) + surroundGS;
-   currentY = responseMean(:,ii);
-    plot(currentX,currentY,'Color',colors(ii,:));
-end
-ylabel('Response'); xlabel('Center + Modulated Surround')
-xlim([min(centerGS + surroundGS) max(centerGS + surroundGS)]);
-ylim([min(responseMean(:)) max(responseMean(:))]);
-
-subplot(212); hold on;
-colors = jet(length(surroundGS));
-plot([0 0],[min(responseMean(:)) max(responseMean(:))],'k--')
-plot([min(centerGS + surroundGS) max(centerGS + surroundGS)],[0 0], 'k--')
-for ii = 1:8
-   currentX = surroundGS(ii) + centerGS;
-   currentY = responseMean(ii,:);
-    plot(currentX,currentY,'Color',colors(ii,:));
-end
-ylabel('Response'); xlabel('Surround + Modulated Center')
-xlim([min(centerGS + surroundGS) max(centerGS + surroundGS)]);
-ylim([min(responseMean(:)) max(responseMean(:))]);
 %% all data: model-free, where are failures of additivity?
 numberOfBins = 8^2;
 
@@ -504,48 +245,7 @@ axis square; view(164,32)
 xlabel('Center gen. signal'); ylabel('Surround gen. signal');
 zlabel('Measured - Linear sum');
 
-%% all data - sandwich model:
-load('horCRF.mat')
-fitX = -1:0.01:1;
-normFactor = CRFcumGauss(1,fitRes.alphaScale,fitRes.betaSens,fitRes.gammaXoff,fitRes.epsilonYoff);
-fitY = CRFcumGauss(fitX,fitRes.alphaScale,fitRes.betaSens,fitRes.gammaXoff,fitRes.epsilonYoff) / normFactor;
-% figure(5); clf; plot(fitX,fitY,'k-')
 
-centerGS = center.generatorSignal(testDataInds);
-surroundGS = surround.generatorSignal(testDataInds);
-surroundGS = surroundGS ./ max(surroundGS);
-measuredResponse = centerSurround.measuredResponse(testDataInds);
- 
-centerAloneResponse = center.measuredResponse(testDataInds);
-surroundAloneResponse = surround.measuredResponse(testDataInds);
-linearSummedResponse = centerAloneResponse + surroundAloneResponse;
-
-aScale = -1;
-
-upstreamSignal = centerGS - ...
-    max(centerGS) * aScale .* CRFcumGauss(surroundGS,fitRes.alphaScale,fitRes.betaSens,fitRes.gammaXoff,fitRes.epsilonYoff) ./ normFactor;
-
-
-sandwichResponse = sigmoidCRF(upstreamSignal,center.nonlinearity.fitParams.k,...
-    center.nonlinearity.fitParams.c0,...
-    center.nonlinearity.fitParams.amp,...
-    center.nonlinearity.fitParams.yOff);
-
-figure(6); clf;
-subplot(311); hold on;
-plot(measuredResponse,'k-')
-plot(linearSummedResponse,'g')
-ylim([min(measuredResponse) max(measuredResponse)])
-
-subplot(312); hold on;
-plot(measuredResponse,'k-')
-plot(predictedResponse_shared,'b')
-ylim([min(measuredResponse) max(measuredResponse)])
-
-subplot(313); hold on;
-plot(measuredResponse,'k-')
-plot(sandwichResponse,'b')
-ylim([min(measuredResponse) max(measuredResponse)])
 %% CS eye movement luminance
 list = loader.loadEpochList([dataFolder,'CSEyeMovementLuminance.mat'],dataFolder);
 
@@ -566,7 +266,7 @@ tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
 gui = epochTreeGUI(tree);
 
 %% CS eye movement luminance - simple plots
-PSTHsigma = 50; %msec
+PSTHsigma = 20; %msec
 parentNode = gui.getSelectedEpochTreeNodes{1};
 
 
@@ -642,27 +342,72 @@ for pp = 1:2
         end
     end
 end
+
 %% Figures for COSYNE abstract:
 
 %Linearity of surround:
 figure(2); clf;
-fig1=gca;
-set(fig1,'XScale','linear','YScale','linear')
+fig2=gca;
+set(fig2,'XScale','linear','YScale','linear')
 set(0, 'DefaultAxesFontSize', 12)
-set(get(fig1,'XLabel'),'String','Center + image surround (spikes)')
-set(get(fig1,'YLabel'),'String','Center + linear surround (spikes)')
+set(get(fig2,'XLabel'),'String','Center + image surround (spikes)')
+set(get(fig2,'YLabel'),'String','Center + linear surround (spikes)')
 
 colors = pmkmp(3);
 
 addLineToAxis(responseMatrix.ON(:,3),responseMatrix.ON(:,7),...
-    'ONdata',fig1,colors(1,:),'none','o')
+    'ONdata',fig2,colors(1,:),'none','o')
 addLineToAxis(responseMatrix.OFF(:,3),responseMatrix.OFF(:,7),...
-    'OFFdata',fig1,colors(2,:),'none','o')
+    'OFFdata',fig2,colors(2,:),'none','o')
 
 addLineToAxis([0 30],[0 30],...
-    'unity',fig1,'k',':','none')
+    'unity',fig2,'k',':','none')
 
-makeAxisStruct(fig1,'LECS_parasols' ,'COSYNE2017Figs')
+makeAxisStruct(fig2,'LECS_parasols' ,'RFSurroundFigs')
+
+
+%Linearity of center modulated by image surround:
+figure(3); clf;
+fig3=gca;
+set(fig3,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig3,'XLabel'),'String','Center image')
+set(get(fig3,'YLabel'),'String','Center disc')
+
+addLineToAxis(responseMatrix.OFF(:,1), responseMatrix.OFF(:,4),...
+    'noSurround',fig3,'g','none','o')
+addLineToAxis(responseMatrix.OFF(:,3), responseMatrix.OFF(:,8),...
+    'imageSurround',fig3,'r','none','o')
+for ii = 1:length(responseMatrix.OFF)
+    addLineToAxis([responseMatrix.OFF(ii,1), responseMatrix.OFF(ii,3)],...
+        [responseMatrix.OFF(ii,4), responseMatrix.OFF(ii,8)],...
+        ['line',num2str(ii)],fig3,'k','-','none')
+end
+addLineToAxis([0 30],[0 30],...
+    'unity',fig3,'k',':','none')
+makeAxisStruct(fig3,'LECS_mod_OffPar' ,'RFSurroundFigs')
+
+%Linearity of center modulated by linear surround:
+figure(4); clf;
+fig4=gca;
+set(fig4,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig4,'XLabel'),'String','Center image')
+set(get(fig4,'YLabel'),'String','Center disc')
+
+addLineToAxis(responseMatrix.OFF(:,1), responseMatrix.OFF(:,4),...
+    'noSurround',fig4,'g','none','o')
+addLineToAxis(responseMatrix.OFF(:,7), responseMatrix.OFF(:,6),...
+    'imageSurround',fig4,'r','none','o')
+for ii = 1:length(responseMatrix.OFF)
+    addLineToAxis([responseMatrix.OFF(ii,1), responseMatrix.OFF(ii,7)],...
+        [responseMatrix.OFF(ii,4), responseMatrix.OFF(ii,6)],...
+        ['line',num2str(ii)],fig4,'k','-','none')
+end
+addLineToAxis([0 30],[0 30],...
+    'unity',fig4,'k',':','none')
+makeAxisStruct(fig4,'LECS_modLin_OffPar' ,'RFSurroundFigs')
+
 
 
 %%
@@ -722,6 +467,76 @@ addLineToAxis([0 0.3],[0 0.3],...
     'unity',fig2,'k',':','none')
 
 % makeAxisStruct(fig2,'LECS_model' ,'COSYNE2017Figs')
+
+%% annulus stim images for figures...
+load('NaturalImageFlashLibrary_101716.mat')
+imageNames = fieldnames(imageData);
+resourcesDir = '~/Documents/MATLAB/turner-package/resources';
+ImageID = 'imk00152';
+fileId=fopen([resourcesDir, '/VHsubsample_20160105', '/', ImageID,'.iml'],'rb','ieee-be');
+img = fread(fileId, [1536,1024], 'uint16');
+img = 255 .* img ./ max(img(:));
+patchSize = 200; %pixels
+MicronsPerPixel = 3.3;
+
+patchesPerImage = 10;
+
+rr = 9;
+
+noBins = 2.*patchesPerImage; %from no. image patches to show
+[N, edges, bin] = histcounts(imageData.(ImageID).responseDifferences,noBins);
+populatedBins = unique(bin);
+%pluck one patch from each bin
+pullInds = arrayfun(@(b) find(b == bin,1),populatedBins);
+location = imageData.(ImageID).location(pullInds,:);
+    
+x = location(rr,1); y = location(rr,2);
+
+x = 1284; y = 657;
+
+% get patch
+patch = img(x-patchSize/2+1:x+patchSize/2,y-patchSize/2+1:y+patchSize/2);
+origPatch = patch;
+
+centerRadius = round(100/MicronsPerPixel);
+surroundInner = round(150/MicronsPerPixel);
+surroundOuter = round(300/MicronsPerPixel);
+
+[rr, cc] = meshgrid(1:patchSize,1:patchSize);
+tempDist = sqrt((rr-(patchSize/2)).^2+(cc-(patchSize/2)).^2);
+centerBinary = ~(tempDist < centerRadius);
+surroundBinary = ~(tempDist < surroundOuter & tempDist > surroundInner);
+binary = min(centerBinary,surroundBinary);
+
+patch(binary) = mean(img(:));
+patchCS = patch;
+patchCL = patch;
+patchCL(~surroundBinary) = mean(patchCS(~surroundBinary));
+
+patchC = origPatch;
+patchS = origPatch;
+patchC(centerBinary) = mean(img(:));
+patchS(surroundBinary) = mean(img(:));
+
+figure(2); clf;
+subplot(211)
+image(patchCS'); colormap(gray); axis image; axis off;
+caxis([min(img(:)) max(img(:))])
+subplot(212)
+image(patchCL'); colormap(gray); axis image; axis off;
+caxis([min(img(:)) max(img(:))])
+
+figure(3); clf;
+subplot(311)
+image(patchC'); colormap(gray); axis image; axis off;
+caxis([min(img(:)) max(img(:))])
+subplot(312)
+image(patchS'); colormap(gray); axis image; axis off;
+caxis([min(img(:)) max(img(:))])
+subplot(313)
+image(patchCS'); colormap(gray); axis image; axis off;
+caxis([min(img(:)) max(img(:))])
+
 %% % % % % Linearity of center modulated by surround % % % % % % 
 colors = hsv(length(allResp) + 1);
 for im = 1:length(allResp);
@@ -882,13 +697,18 @@ for cc = 1:treeCS.children.length
 end
 
 %%
+colors = pmkmp(3);
 figure(2); clf;
 subplot(211); hold on
-plot(sigmas.Center,responses.Center,'b-o');
-plot(sigmas.Surround,responses.Surround,'r-o');
+plot(sigmas.Center,responses.Center,'Color',colors(1,:),'Marker','o');
+plot(sigmas.Surround,responses.Surround,'Color',colors(2,:),'Marker','o');
+legend('Center','Surround')
+xlabel('Spatial scale sigma (um)')
+ylabel('Response (spikes)')
 subplot(212)
-surf(sigmas.Center,sigmas.Surround,responses.CenterSurround)
-xlabel('Center'); ylabel('Surround')
+pcolor(sigmas.Center,sigmas.Surround,responses.CenterSurround)
+colormap(hot)
+xlabel('Center'); ylabel('Surround'); colorbar;
 
 
 

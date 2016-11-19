@@ -82,7 +82,8 @@ getFlaggedAndExampleNodes(tree, saveFileDirectory, saveFileID);
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doContrastReversingGratingsAnalysis(parentNode,...
-    'normalizePopulationF2',true,'noBins',10);
+    'normalizePopulationF2',true,'noBins',8,...
+    'figureID','OFFparExc');
 
 %% LINEAR EQUIVALENT ANNULUS: tree
 list = loader.loadEpochList([dataFolder,'LinearEquivalentAnnulus.mat'],dataFolder);
@@ -186,63 +187,13 @@ tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
     'protocolSettings(currentStimulus)'});
 
 gui = epochTreeGUI(tree);
-%% NatImageCSAdditivity simple plots
-%select patch sampling node
+
+%% NatImageCSAdditivity do analysis and make figs
+%       select patch sampling node
+clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
-
-responses = zeros(1,3); %c, s, cs
-ct = 0;
-for pp = 1:parentNode.children.length
-    imageNode = parentNode.children(pp);
-    for ll = 1:parentNode.children(pp).children.length
-        locationNode = parentNode.children(pp).children(ll);
-        if locationNode.children.length < 3
-            continue
-        end
-        ct = ct + 1;
-        tempCenter = getResponseAmplitudeStats(locationNode.childBySplitValue('Center').epochList,'exc');
-        responses(ct,1) = tempCenter.integrated.mean;
-
-        tempSurround = getResponseAmplitudeStats(locationNode.childBySplitValue('Surround').epochList,'exc');
-        responses(ct,2) = tempSurround.integrated.mean;
-
-        tempCS = getResponseAmplitudeStats(locationNode.childBySplitValue('Center-Surround').epochList,'exc');
-        responses(ct,3) = tempCS.integrated.mean;
-
-    end
-end
-
-%%
-figure(2); clf; hold on;
-[a, s_c] = getActivityRatio(responses(:,1));
-[n, edges] = histcounts(responses(:,1),5);
-centers = diff(edges)./2 + edges(1:end-1);
-plot(centers, n, 'b')
-
-[a, s_cs] = getActivityRatio(responses(:,3));
-[n, edges] = histcounts(responses(:,3),5);
-centers = diff(edges)./2 + edges(1:end-1);
-plot(centers, n, 'k')
-
-
-    
-%%
-figure(2); clf;
-subplot(221); hold on;
-plot(responses(:,1) + responses(:,2),responses(:,3),'ko')
-plot([min(responses(:)) max(responses(:))],[min(responses(:)) max(responses(:))],'k--')
-xlabel('R(C) + R(S)'); ylabel('R(C+S)')
-
-subplot(222); hold on;
-plot(responses(:,1),responses(:,2),'ko')
-plot([min(responses(:)) max(responses(:))],[min(responses(:)) max(responses(:))],'k--')
-xlabel('R(C)'); ylabel('R(S)')
-
-subplot(223); hold on;
-plot(responses(:,1),responses(:,3),'ko')
-plot([min(responses(:)) max(responses(:))],[min(responses(:)) max(responses(:))],'k--')
-xlabel('R(C)'); ylabel('R(C+S)')
-
+doNatImageAdditivityAnalysis(parentNode,...
+    'metric','integrated','figureID','ONParExcP');
 
 %% F1F2 CONTRAST: tree
 originalList = loader.loadEpochList([dataFolder,'contrastF1F1&SFC.mat'],dataFolder);
@@ -332,11 +283,11 @@ gui = epochTreeGUI(tree);
 
 
 %% HEPES EXPANDING SPOTS: do analysis & make figs
-%       Select cell type as parentNode
+%       Select cell type as parent node. Flag and example drug node to plot
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doAreaSummationAnalysis(parentNode,'metric','integrated',...
-    'figureID','OFFparHEPES1');
+    'figureID','ONparCtl');
 
 %% HEPES CONTRAST-REVERSING GRATINGS: tree
 
@@ -372,9 +323,8 @@ gui = epochTreeGUI(tree);
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doContrastReversingGratingsAnalysis(parentNode,...
-    'normalizePopulationF2',true,'noBins',10,...
-    'figureID','ONparControl');
-
+    'normalizePopulationF2',true,'noBins',8,...
+    'figureID','OFFparCtl');
 
 %% TTX CRGs: tree
 list = loader.loadEpochList([dataFolder,'CRG.mat'],dataFolder);

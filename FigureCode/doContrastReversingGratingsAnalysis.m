@@ -91,9 +91,6 @@ function doContrastReversingGratingsAnalysis(node,varargin)
                     'errUpF2',fig2,'k','--','none')
                 addLineToAxis(0,0,cellInfo.cellID,fig2,'k','none','none')
                 
-                drawnow
-                figure(f1); print('-depsc',['CRGtrace_',figureID,'.eps'])
-                figure(f2); print('-depsc',['CRGF2_',figureID,'.eps'])
                 if ~isempty(figureID)
                     makeAxisStruct(fig1,['CRGtrace_' , figureID] ,'RFSurroundFigs')
                     makeAxisStruct(fig2,['CRGF2_' , figureID] ,'RFSurroundFigs')
@@ -104,10 +101,8 @@ function doContrastReversingGratingsAnalysis(node,varargin)
             if (normalizePopulationF2 == 1)
                 F2.mean = F2.mean ./ max(F2.mean);
             end
-            if currentNode.custom.get('isExample')
-                addLineToAxis(barWidth,F2.mean,...
-                    ['exampleF2_',num2str(pp)],fig3,[0.5 0.5 0.5],'-','none')
-            end
+            addLineToAxis(barWidth,F2.mean,...
+                ['exampleF2_',num2str(pp)],fig3,[0.5 0.5 0.5],'-','none')
             allBarWidth = cat(2,allBarWidth,barWidth);
             allF2 = cat(2,allF2,F2.mean);
         end

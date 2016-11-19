@@ -78,11 +78,8 @@ function doAreaSummationAnalysis(node,varargin)
 
             set(get(fig1,'YLabel'),'String',stats.peak.units)
             addLineToAxis(0,0,cellInfo.cellID,fig1,'k','none','none')
-            
             addLineToAxis(0,0,cellInfo.cellID,fig2,'k','none','none')
-            drawnow
-            figure(f1); print('-depsc',['ES_',figureID,'.eps'])
-            figure(f2); print('-depsc',['ESAS_',figureID,'.eps'])
+            
             if ~isempty(figureID)
                 makeAxisStruct(fig1,['ES_',figureID] ,'RFSurroundFigs')
                 makeAxisStruct(fig2,['ESAS_',figureID] ,'RFSurroundFigs')
