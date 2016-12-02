@@ -9,6 +9,7 @@ function doLinearEquivalentAnalysis(node,varargin)
         @(x) any(validatestring(x,expectedStims)));
     addParameter(ip,'subunitSigma',25,@isnumeric); %microns
     addParameter(ip,'centerSigma',150,@isnumeric); %microns
+    addParameter(ip,'figureID',[],@ischar);
     
     ip.parse(node,varargin{:});
     node = ip.Results.node;
@@ -17,6 +18,7 @@ function doLinearEquivalentAnalysis(node,varargin)
     stimType = ip.Results.stimType;
     subunitSigma = ip.Results.subunitSigma;
     centerSigma = ip.Results.centerSigma;
+    figureID = ip.Results.figureID;
 
     figure; clf;
     fig1=gca;

@@ -6,19 +6,20 @@ function doAreaSummationAnalysis(node,varargin)
     addParameter(ip,'metric','integrated',...
         @(x) any(validatestring(x,expectedMetrics)));
     addParameter(ip,'amplitudeMultiplier',1,@isnumeric);
+    
     ip.parse(node,varargin{:});
     node = ip.Results.node;
-    figureID = ip.Results.figureID;
     metric = ip.Results.metric;
-    amplitudeMultiplier = ip.Results.amplitudeMultiplier;    
+    amplitudeMultiplier = ip.Results.amplitudeMultiplier;
+    figureID = ip.Results.figureID;
     figure; clf;
-    fig1=gca; f1 = gcf; 
+    fig1=gca; % Response traces
     set(fig1,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig1,'XLabel'),'String','Time (s)')
     
     figure; clf;
-    fig2=gca; f2 = gcf;
+    fig2=gca; % Area summation curve & fit
     set(fig2,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig2,'XLabel'),'String','Spot Diameter (um)')
@@ -61,12 +62,16 @@ function doAreaSummationAnalysis(node,varargin)
             fitY = DoGAreaSummation([Kc,sigmaC,Ks,sigmaS], fitX);
             fitParams.Kc(pp) = Kc; fitParams.sigmaC(pp) = sigmaC;
             fitParams.Ks(pp) = Ks; fitParams.sigmaS(pp) = sigmaS;
+            fprintf('sigmaC = %2.2f; sigmaS = %2.2f;\nkC = %2.2f; kS = %2.2f\n',...
+                sigmaC, sigmaS, Kc, Ks);
         elseif ~isempty(strfind(cellInfo.cellType,'horizontal'))
             params0 = [max(respAmps), 40];
             [Kc,sigmaC] = fitGaussianRFAreaSummation(spotSizes,respAmps,params0);
             fitX = 0:max(spotSizes);
             fitY = GaussianRFAreaSummation([Kc,sigmaC], fitX);
             fitParams.Kc(pp) = Kc; fitParams.sigmaC(pp) = sigmaC;
+            fprintf('sigmaC = %2.2f;\nkC = %2.2f;\n',...
+                sigmaC, Kc);
         end
         
         if currentNode.custom.get('isExample')
