@@ -308,107 +308,12 @@ tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
 
 gui = epochTreeGUI(tree);
 
-%% flag imageID node for example ON and OFF 
-
+%% flag recType nodes and set an example ON and OFF image node
+% select whole tree
+clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
-
-centerStims = {'Image','none','Image','Equiv','none','Equiv','Image','Equiv'};
-surroundStims = {'none','Image','Image','none','Equiv','Equiv','Equiv','Image'};
-
-populationNodes = {};
-ct = 0;
-for nn = 1:parentNode.descendentsDepthFirst.length
-    if strcmp(parentNode.descendentsDepthFirst(nn).splitKey,...
-            'protocolSettings(currentCenter)') && parentNode.descendentsDepthFirst(nn).custom.get('isSelected')
-        ct = ct + 1;
-        populationNodes(ct) = parentNode.descendentsDepthFirst(nn);
-    end
-end
-
-clear responseMatrix
-responseMatrix.ON = [];
-responseMatrix.OFF = [];
-for pp = 1:2
-    if pp == 1
-        fieldName = 'OFF'; 
-    elseif pp == 2
-        fieldName = 'ON'; 
-    end
-    for cc = 1:8
-        currentNode = populationNodes{pp}.childBySplitValue(centerStims{cc}).childBySplitValue(surroundStims{cc});
-        for ii = 1:currentNode.children.length
-            newResp = getResponseAmplitudeStats(currentNode.children(ii).epochList,'extracellular');
-            responseMatrix.(fieldName)(ii,cc) = newResp.integrated.mean;
-        end
-    end
-end
-
-%% Figures for COSYNE abstract:
-
-%Linearity of surround:
-figure(2); clf;
-fig2=gca;
-set(fig2,'XScale','linear','YScale','linear')
-set(0, 'DefaultAxesFontSize', 12)
-set(get(fig2,'XLabel'),'String','Center + image surround (spikes)')
-set(get(fig2,'YLabel'),'String','Center + linear surround (spikes)')
-
-colors = pmkmp(3);
-
-addLineToAxis(responseMatrix.ON(:,3),responseMatrix.ON(:,7),...
-    'ONdata',fig2,colors(1,:),'none','o')
-addLineToAxis(responseMatrix.OFF(:,3),responseMatrix.OFF(:,7),...
-    'OFFdata',fig2,colors(2,:),'none','o')
-
-addLineToAxis([0 30],[0 30],...
-    'unity',fig2,'k',':','none')
-
-makeAxisStruct(fig2,'LECS_parasols' ,'RFSurroundFigs')
-
-
-%Linearity of center modulated by image surround:
-figure(3); clf;
-fig3=gca;
-set(fig3,'XScale','linear','YScale','linear')
-set(0, 'DefaultAxesFontSize', 12)
-set(get(fig3,'XLabel'),'String','Center image')
-set(get(fig3,'YLabel'),'String','Center disc')
-
-addLineToAxis(responseMatrix.OFF(:,1), responseMatrix.OFF(:,4),...
-    'noSurround',fig3,'g','none','o')
-addLineToAxis(responseMatrix.OFF(:,3), responseMatrix.OFF(:,8),...
-    'imageSurround',fig3,'r','none','o')
-for ii = 1:length(responseMatrix.OFF)
-    addLineToAxis([responseMatrix.OFF(ii,1), responseMatrix.OFF(ii,3)],...
-        [responseMatrix.OFF(ii,4), responseMatrix.OFF(ii,8)],...
-        ['line',num2str(ii)],fig3,'k','-','none')
-end
-addLineToAxis([0 30],[0 30],...
-    'unity',fig3,'k',':','none')
-makeAxisStruct(fig3,'LECS_mod_OffPar' ,'RFSurroundFigs')
-
-%Linearity of center modulated by linear surround:
-figure(4); clf;
-fig4=gca;
-set(fig4,'XScale','linear','YScale','linear')
-set(0, 'DefaultAxesFontSize', 12)
-set(get(fig4,'XLabel'),'String','Center image')
-set(get(fig4,'YLabel'),'String','Center disc')
-
-addLineToAxis(responseMatrix.OFF(:,1), responseMatrix.OFF(:,4),...
-    'noSurround',fig4,'g','none','o')
-addLineToAxis(responseMatrix.OFF(:,7), responseMatrix.OFF(:,6),...
-    'imageSurround',fig4,'r','none','o')
-for ii = 1:length(responseMatrix.OFF)
-    addLineToAxis([responseMatrix.OFF(ii,1), responseMatrix.OFF(ii,7)],...
-        [responseMatrix.OFF(ii,4), responseMatrix.OFF(ii,6)],...
-        ['line',num2str(ii)],fig4,'k','-','none')
-end
-addLineToAxis([0 30],[0 30],...
-    'unity',fig4,'k',':','none')
-makeAxisStruct(fig4,'LECS_modLin_OffPar' ,'RFSurroundFigs')
-
-
+doLECSAnalysis(parentNode,'metric','integrated',...
+    'figureID','parSpikes');
 
 %%
 clc;
