@@ -3,12 +3,14 @@ function doContrastReversingGratingsAnalysis(node,varargin)
     ip.addRequired('node',@(x)isa(x,'edu.washington.rieke.jauimodel.AuiEpochTree'));
     addParameter(ip,'figureID',[],@ischar);
     ip.addParameter('normalizePopulationF2',false,@islogical);
+    ip.addParameter('normalizeExampleF2',false,@islogical);
     ip.addParameter('noBins',false,@isnumeric);
     
     ip.parse(node,varargin{:});
     node = ip.Results.node;
     figureID = ip.Results.figureID;
     normalizePopulationF2 = ip.Results.normalizePopulationF2;
+    normalizeExampleF2 = ip.Results.normalizeExampleF2;
     noBins = ip.Results.noBins;
 
     centerNodes = {};
@@ -23,7 +25,22 @@ function doContrastReversingGratingsAnalysis(node,varargin)
             end
         end
     end
+    
+    figure; clf; %eg cell F2, c & s together
+    fig2=gca;
+    set(fig2,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig2,'XLabel'),'String','Bar width (um)')
+
+    figure; clf; %population F2, c & s together
+    fig3=gca;
+    set(fig3,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig3,'XLabel'),'String','Bar width (um)')
+    
+    
     regionIDs = 'cs';
+    regionColors = 'gk';
     for rr = 1:2
         if rr == 1
             populationNodes = centerNodes;
@@ -35,24 +52,11 @@ function doContrastReversingGratingsAnalysis(node,varargin)
         end
         
         figure; clf; %eg cell traces
-        fig1=gca; f1 = gcf; 
+        fig1=gca;
         set(fig1,'XScale','linear','YScale','linear')
         set(0, 'DefaultAxesFontSize', 12)
         set(get(fig1,'XLabel'),'String','Time (s)')
 
-        figure; clf; %eg cell F2
-        fig2=gca; f2 = gcf; 
-        set(fig2,'XScale','linear','YScale','linear')
-        set(0, 'DefaultAxesFontSize', 12)
-        set(get(fig2,'XLabel'),'String','Bar width (um)')
-
-        figure; clf; %population F2
-        fig3=gca;
-        set(fig3,'XScale','linear','YScale','linear')
-        set(0, 'DefaultAxesFontSize', 12)
-        set(get(fig3,'XLabel'),'String','Bar width (um)')
-        
-        
         regionID = regionIDs(rr);
         allBarWidth = [];
         allF2 = [];
@@ -74,39 +78,44 @@ function doContrastReversingGratingsAnalysis(node,varargin)
                 if currentNode.custom.get('isExample')
                     responseTrace = getCycleAverageResponse(currentNode.children(ee).epochList,recType);
                     addLineToAxis(responseTrace.timeVector,responseTrace.meanCycle,...
-                        ['c',num2str(barWidth(ee))],fig1,colors(ee,:),'-','none')
+                        ['bar',num2str(barWidth(ee))],fig1,colors(ee,:),'-','none')
                 end
             end
             %example:
             if currentNode.custom.get('isExample')
                 set(get(fig1,'YLabel'),'String',stats.units)
                 addLineToAxis(0,0,cellInfo.cellID,fig1,'k','none','none')
+                if (normalizeExampleF2 == 1)
+                    normFactor = max(F2.mean);
+                else
+                    normFactor = 1;
+                end
 
                 set(get(fig2,'YLabel'),'String',stats.units)
-                addLineToAxis(barWidth,F2.mean,...
-                    'meanF2',fig2,'k','-','o')
-                addLineToAxis(barWidth,F2.mean - F2.sem,...
-                    'errDownF2',fig2,'k','--','none')
-                addLineToAxis(barWidth,F2.mean + F2.sem,...
-                    'errUpF2',fig2,'k','--','none')
+                addLineToAxis(barWidth,F2.mean ./ normFactor,...
+                    ['meanF2_',regionID],fig2,regionColors(rr),'-','o')
+                addLineToAxis(barWidth,(F2.mean - F2.sem) ./ normFactor,...
+                    ['errDownF2_',regionID],fig2,regionColors(rr),'--','none')
+                addLineToAxis(barWidth,(F2.mean + F2.sem) ./ normFactor,...
+                    ['errUpF2_',regionID],fig2,regionColors(rr),'--','none')
                 addLineToAxis(0,0,cellInfo.cellID,fig2,'k','none','none')
                 
                 if ~isempty(figureID)
-                    makeAxisStruct(fig1,['CRGtrace_' , figureID] ,'RFSurroundFigs')
-                    makeAxisStruct(fig2,['CRGF2_' , figureID] ,'RFSurroundFigs')
+                    makeAxisStruct(fig1,['CRGtrace_', regionID, '_', figureID] ,'RFSurroundFigs')
                 end
             end
 
-            %population:
+            % Collect population stats and plot individual F2 traces
             if (normalizePopulationF2 == 1)
                 F2.mean = F2.mean ./ max(F2.mean);
             end
             addLineToAxis(barWidth,F2.mean,...
-                ['exampleF2_',num2str(pp)],fig3,[0.5 0.5 0.5],'-','none')
+                ['exampleF2_',regionID,'_',num2str(pp)],fig3,regionColors(rr),'--','none')
             allBarWidth = cat(2,allBarWidth,barWidth);
             allF2 = cat(2,allF2,F2.mean);
         end
 
+        % Population stats:
         [n,binMean,binSTD,binID] = histcounts_equallyPopulatedBins(allBarWidth,noBins);
         respMean = zeros(1,noBins);
         respErr = zeros(1,noBins);
@@ -117,19 +126,20 @@ function doContrastReversingGratingsAnalysis(node,varargin)
 
             addLineToAxis([binMean(bb) binMean(bb)],...
                [respMean(bb) - respErr(bb), respMean(bb) + respErr(bb)],...
-               ['popErrF2_',num2str(bb)],fig3,'k','-','none')
+               ['popErrF2_',regionID,num2str(bb)],fig3,regionColors(rr),'-','none')
 
             addLineToAxis([binMean(bb) - binSTD(bb) ./sqrt(n(bb)) binMean(bb) + binSTD(bb) ./sqrt(n(bb))],...
                [respMean(bb), respMean(bb)],...
-               ['popErrBin_',num2str(bb)],fig3,'k','-','none')
+               ['popErrBin_',regionID,num2str(bb)],fig3,regionColors(rr),'-','none')
         end
+        addLineToAxis(binMean,respMean,['popMean_',regionID],fig3,regionColors(rr),'-','.')
 
-        addLineToAxis(binMean,respMean,'popMean',fig3,'k','-','.')
-
-        set(get(fig3,'YLabel'),'String',stats.units)
-        if ~isempty(figureID)
-            makeAxisStruct(fig3,['CRGpopF2_' , figureID] ,'RFSurroundFigs')
-        end
     end
+    set(get(fig3,'YLabel'),'String',stats.units)
+    if ~isempty(figureID)
+        makeAxisStruct(fig2,['CRGF2_', figureID] ,'RFSurroundFigs')
+        makeAxisStruct(fig3,['CRGpopF2_', figureID] ,'RFSurroundFigs')
+    end
+    
 end
 

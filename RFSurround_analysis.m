@@ -40,7 +40,7 @@ getFlaggedAndExampleNodes(tree, saveFileDirectory, saveFileID);
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doAreaSummationAnalysis(parentNode,'metric','integrated',...
-    'amplitudeMultiplier',1);
+    'amplitudeMultiplier',1,'figureID','Horizontal');
 
 %% CONTRAST-REVERSING GRATINGS: tree
 saveFileID = 'CRGs_exc';
@@ -82,8 +82,10 @@ getFlaggedAndExampleNodes(tree, saveFileDirectory, saveFileID);
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doContrastReversingGratingsAnalysis(parentNode,...
-    'normalizePopulationF2',true,'noBins',8,...
-    'figureID','OFFparExc');
+    'normalizePopulationF2',true,...
+    'normalizeExampleF2', true,...
+    'noBins',8,...
+    'figureID','Horiz');
 
 %% LINEAR EQUIVALENT ANNULUS: tree
 list = loader.loadEpochList([dataFolder,'LinearEquivalentAnnulus.mat'],dataFolder);
