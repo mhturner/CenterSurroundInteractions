@@ -43,7 +43,7 @@ doAreaSummationAnalysis(parentNode,'metric','integrated',...
     'amplitudeMultiplier',1,'figureID','Horizontal');
 
 %% CONTRAST-REVERSING GRATINGS: tree
-saveFileID = 'CRGs_exc';
+saveFileID = 'CRGs_ParasolExcAndHorizontal';
 
 list = loader.loadEpochList([dataFolder,'CRG-noDrug.mat'],dataFolder);
 recordingSplit = @(list)splitOnRecKeyword(list);
@@ -76,16 +76,17 @@ end
 %       Flag apertureDiamter node of cells in population    
 
 % save flagged and example-d tree nodes for the future
-saveFileID = 'CRGs_exc';
+% saveFileID = 'CRGs_ParasolExcAndHorizontal';
 getFlaggedAndExampleNodes(tree, saveFileDirectory, saveFileID);
 %% CONTRAST-REVERSING GRATINGS: do analysis & make figs
+% select cell type node
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doContrastReversingGratingsAnalysis(parentNode,...
     'normalizePopulationF2',true,...
     'normalizeExampleF2', true,...
     'noBins',8,...
-    'figureID','Horiz');
+    'figureID','ONexc');
 
 %% LINEAR EQUIVALENT ANNULUS: tree
 list = loader.loadEpochList([dataFolder,'LinearEquivalentAnnulus.mat'],dataFolder);
@@ -289,7 +290,7 @@ gui = epochTreeGUI(tree);
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doAreaSummationAnalysis(parentNode,'metric','integrated',...
-    'figureID','ONparCtl');
+    'figureID','ONparHEPES');
 
 %% HEPES CONTRAST-REVERSING GRATINGS: tree
 
@@ -326,7 +327,7 @@ clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doContrastReversingGratingsAnalysis(parentNode,...
     'normalizePopulationF2',true,'noBins',8,...
-    'figureID','OFFparCtl');
+    'figureID','ONparCtl');
 
 %% TTX CRGs: tree
 list = loader.loadEpochList([dataFolder,'CRG.mat'],dataFolder);
