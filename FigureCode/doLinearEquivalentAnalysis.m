@@ -100,11 +100,11 @@ function doLinearEquivalentAnalysis(node,varargin)
                 imageSize = currentNode.epochList.firstValue.protocolSettings('apertureDiameter');
             end
             imageSize = [imageSize, imageSize];
-            stimSet = currentNode.epochList.firstValue.protocolSettings.get('currentStimSet');
+            imageStimSet = currentNode.epochList.firstValue.protocolSettings.get('currentImageSet');
             imageSet = getNaturalImagePatchFromLocation(patchLocations,...
                 ImageNode.splitValue,...
                 'imageSize',imageSize,...
-                'stimSet',stimSet);
+                'stimSet',imageStimSet);
 
             contrastPolarity = 1;
             modelResponses = getSubunitModelResponse(imageSet.images,imageSet.backgroundIntensity,...
