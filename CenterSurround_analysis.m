@@ -40,7 +40,6 @@ doContrastResponseAnalysis(parentNode,'metric','peak',...
 
 %% CENTER SURROUND NOISE: tree
 
-
 list = loader.loadEpochList([dataFolder,'CenterSurroundNoise.mat'],dataFolder);
 recordingSplit = @(list)splitOnRecKeyword(list);
 recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
@@ -50,12 +49,13 @@ cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, ce
 
 tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
     recordingSplit_java,...
+    'protocolSettings(useRandomSeed)',...
     'protocolSettings(currentStimulus)'});
 
 %check that some parameters are consistent within recordings...
 constantSettings = {'centerOffset','backgroundIntensity','preTime',...
-    'stimTime','tailTime','frameDwell','annulusInnerDiameter',...
-    'centerDiameter','annulusOuterDiameter','useRandomSeed','noiseStdv'};
+    'tailTime','frameDwell','annulusInnerDiameter',...
+    'centerDiameter','annulusOuterDiameter','noiseStdv'};
 for cellTypeIndex = 1:tree.children.length
     for cellNameIndex = 1:tree.children(cellTypeIndex).children.length
         for recTypeIndex = 1:tree.children(cellTypeIndex).children(cellNameIndex).length
@@ -68,7 +68,7 @@ end
 gui = epochTreeGUI(tree);
 
 %% CENTER SURROUND NOISE: example cell plotting
-% flag rec type nodes in population
+% flag recType nodes in population
 % select cell type node
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
@@ -121,48 +121,7 @@ axis square; view(164,32)
 xlabel('Center gen. signal'); ylabel('Surround gen. signal');
 zlabel('Measured - Linear sum');
 
-%% eye movement luminace trajectories: histogram in c/s gen signal space
-load('~/Documents/MATLAB/Analysis/NatImages/Stimuli/SaccadeLuminanceTrajectoryStimuli_20160919.mat')
 
-numberOfBins_em = 100^2;
- 
-centerGenSignal = [];
-surroundGenSignal = [];
-filterSampleFreq = length(center.filterTimeVector) / center.filterTimeVector(end); %Hz
-for ss = 1:length(luminanceData)
-    cStim = resample(luminanceData(ss).centerTrajectory,30,200  );
-    cStim = (cStim) ./ luminanceData(ss).ImageMax; %stim as presented
-
-    %convert to contrast (relative to mean) for filter convolution
-    imMean = (luminanceData(ss).ImageMean  ./ luminanceData(ss).ImageMax);
-    cStim = (cStim - imMean) / imMean;
-    
-    linearPrediction = conv(cStim,center.LinearFilter);
-    linearPrediction = linearPrediction(1:length(cStim));
-    centerGenSignal = cat(2,centerGenSignal,linearPrediction);
-
-    sStim = resample(luminanceData(ss).surroundTrajectory,30,200);
-    
-    sStim = (sStim) ./ luminanceData(ss).ImageMax; %stim as presented
-
-    %convert to contrast (relative to mean) for filter convolution
-    imMean = (luminanceData(ss).ImageMean  ./ luminanceData(ss).ImageMax);
-    sStim = (sStim - imMean) / imMean;
-    
-    linearPrediction = conv(sStim,surround.LinearFilter);
-    linearPrediction = linearPrediction(1:length(sStim));
-    surroundGenSignal = cat(2,surroundGenSignal,linearPrediction);
-end
-
-
-figure(6); clf;
-histogram2(centerGenSignal,surroundGenSignal,sqrt(numberOfBins_em),'DisplayStyle','tile',...
-    'Normalization','probability','ShowEmptyBins','on');
-% set(gca, 'ZScale', 'log')
-% axis square; view(-5,70)
-% xlim([-500 500]); ylim([-25 25])
-xlabel('Center gen. signal'); ylabel('Surround gen. signal');
-% zlabel('Prob');
 %% look at errors of additivity for different models:
 %SHARED NLINEARITY:
 cc = linspace(min(centerGS),max(centerGS),sqrt(numberOfBins));
@@ -313,7 +272,7 @@ gui = epochTreeGUI(tree);
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLECSAnalysis(parentNode,'metric','integrated',...
-    'figureID','parSpikes');
+    'figureID','ParSpikes');
 
 %%
 clc;
