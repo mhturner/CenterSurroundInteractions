@@ -3,11 +3,17 @@ function doCSLNAnalysis(node,varargin)
     ip.addRequired('node',@(x)isa(x,'edu.washington.rieke.jauimodel.AuiEpochTree'));
     addParameter(ip,'bins2D',6^2,@isnumeric);
     addParameter(ip,'bins1D',20,@isnumeric); 
+    addParameter(ip,'exportFigs',true,@islogical);
+    addParameter(ip,'convertToConductance',true,@islogical);
+    addParameter(ip,'fitWithEquallyPopulatedBins',true,@islogical);
     
     ip.parse(node,varargin{:});
     node = ip.Results.node;
     bins2D = ip.Results.bins2D;
     bins1D = ip.Results.bins1D;
+    exportFigs = ip.Results.exportFigs;
+    convertToConductance = ip.Results.convertToConductance;
+    fitWithEquallyPopulatedBins = ip.Results.fitWithEquallyPopulatedBins;
     
     figColors = pmkmp(8);
     egEpochToPull = 3; %for example traces
@@ -21,20 +27,20 @@ function doCSLNAnalysis(node,varargin)
     figure; clf; fig2=gca; %Nonlinearities
     set(fig2,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig2,'XLabel'),'String','Linear prediction (pA)')
-    set(get(fig2,'YLabel'),'String','Measured (pA)')
+    set(get(fig2,'XLabel'),'String','Linear prediction (nS)')
+    set(get(fig2,'YLabel'),'String','Measured (nS)')
     
     figure; clf; fig3=gca; %Independent nonlinearities
     set(fig3,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig3,'XLabel'),'String','Linear prediction (pA)')
-    set(get(fig3,'YLabel'),'String','Measured (pA)')
+    set(get(fig3,'XLabel'),'String','Linear prediction (nS)')
+    set(get(fig3,'YLabel'),'String','Measured (nS)')
     
     figure; clf; fig4=gca; %Shared nonlinearity
     set(fig4,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig4,'XLabel'),'String','Linear prediction (pA)')
-    set(get(fig4,'YLabel'),'String','Measured (pA)')
+    set(get(fig4,'XLabel'),'String','Linear prediction (nS)')
+    set(get(fig4,'YLabel'),'String','Measured (nS)')
     
     figure; clf; fig5=gca; %population R-squared results
     set(fig5,'XScale','linear','YScale','linear')
@@ -46,25 +52,25 @@ function doCSLNAnalysis(node,varargin)
     set(fig6,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig6,'XLabel'),'String','Surround activation')
-    set(get(fig6,'YLabel'),'String','Response (pA)')
+    set(get(fig6,'YLabel'),'String','Response (nS)')
 
     figure; clf; fig7=gca; %slice of surround, modulate center
     set(fig7,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig7,'XLabel'),'String','Center activation')
-    set(get(fig7,'YLabel'),'String','Response (pA)')
+    set(get(fig7,'YLabel'),'String','Response (nS)')
     
     figure; clf; fig8=gca; %center +/- surround overlay
     set(fig8,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig8,'XLabel'),'String','Center +/- surround')
-    set(get(fig8,'YLabel'),'String','Response (pA)')
+    set(get(fig8,'YLabel'),'String','Response (nS)')
 
     figure; clf; fig9=gca; %surround +/- center overlay
     set(fig9,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig9,'XLabel'),'String','Surround +/- center')
-    set(get(fig9,'YLabel'),'String','Response (pA)')
+    set(get(fig9,'YLabel'),'String','Response (nS)')
     
     % Individual traces for example cell:
     figure; clf; fig11=gca; %center stim
@@ -83,19 +89,25 @@ function doCSLNAnalysis(node,varargin)
     set(fig13,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig13,'XLabel'),'String','Time (s)')
-    set(get(fig13,'YLabel'),'String','Response (pA)')
+    set(get(fig13,'YLabel'),'String','Response (nS)')
     
     figure; clf; fig14=gca; %surround response
     set(fig14,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig14,'XLabel'),'String','Time (s)')
-    set(get(fig14,'YLabel'),'String','Response (pA)')
+    set(get(fig14,'YLabel'),'String','Response (nS)')
     
     figure; clf; fig15=gca; %center-surround response
     set(fig15,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig15,'XLabel'),'String','Time (s)')
-    set(get(fig15,'YLabel'),'String','Response (pA)')
+    set(get(fig15,'YLabel'),'String','Response (nS)')
+    
+    figure; clf; fig16=gca; %improvement in R2 vs surround weight
+    set(fig16,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig16,'XLabel'),'String','Relative surround weight')
+    set(get(fig16,'YLabel'),'String','Improvement over independent model')
 
     populationNodes = {};
     ct = 0;
@@ -107,9 +119,14 @@ function doCSLNAnalysis(node,varargin)
         end
     end
     
+    filterArea.center = [];
+    filterArea.surround = [];
+    
     rSquaredValues.joint = [];
     rSquaredValues.indep = [];
     rSquaredValues.shared = [];
+    ONcellInds = [];
+    OFFcellInds = [];
     for pp = 1:length(populationNodes)
         recNode = populationNodes{pp};
         currentNode = [];
@@ -123,6 +140,15 @@ function doCSLNAnalysis(node,varargin)
         end
         cellInfo = getCellInfoFromEpochList(currentNode.epochList);
         recType = getRecordingTypeFromEpochList(currentNode.epochList);
+        if (convertToConductance)
+            recType = [recType, ', conductance']; %#ok<AGROW>
+        end
+        
+        if strcmp(cellInfo.cellType,'ONparasol')
+            ONcellInds = cat(2,ONcellInds,pp);
+        elseif strcmp(cellInfo.cellType,'OFFparasol')
+            OFFcellInds = cat(2,OFFcellInds,pp);
+        end
         
 % % % % % % % % GET LINEAR FILTERS AND GENERATOR SIGNALS % % % % % % % % % % % % % % % % 
         % center:
@@ -134,6 +160,9 @@ function doCSLNAnalysis(node,varargin)
         % center + surround: just to test against measured response
         centerSurround = getLinearFilterAndPrediction(currentNode.childBySplitValue('Center-Surround').epochList,recType,...
             'seedName','centerNoiseSeed','numberOfBins',bins1D);
+        
+        filterArea.center(pp) = trapz(abs(center.LinearFilter));
+        filterArea.surround(pp) = trapz(abs(surround.LinearFilter));
 
         if currentNode.custom.get('isExample')
                 addLineToAxis([0 center.filterTimeVector],[0 center.LinearFilter],...
@@ -168,22 +197,22 @@ function doCSLNAnalysis(node,varargin)
                 centerExampleEpoch = cEL.elements(egEpochToPull);
                 cSeed = centerExampleEpoch.protocolSettings('centerNoiseSeed');
                 centerEpochRes = getNoiseStimulusAndResponse(centerExampleEpoch,recType,'seedName','centerNoiseSeed');
-                addLineToAxis(centerEpochRes.timeVector(1:length(centerEpochRes.stimulus)),...
-                    centerEpochRes.stimulus,...
+                addLineToAxis(centerEpochRes.wholeTrace.timeVector(1:length(centerEpochRes.wholeTrace.stimulus)),...
+                    centerEpochRes.wholeTrace.stimulus,...
                     ['stim',num2str(pp)],fig11,figColors(1,:),'-','none')
-                addLineToAxis(centerEpochRes.timeVector(1:length(centerEpochRes.stimulus)),...
-                    -centerEpochRes.response(1:length(centerEpochRes.stimulus)),...
+                addLineToAxis(centerEpochRes.wholeTrace.timeVector(1:length(centerEpochRes.wholeTrace.stimulus)),...
+                    centerEpochRes.wholeTrace.response(1:length(centerEpochRes.wholeTrace.stimulus)),...
                     ['resp',num2str(pp)],fig13,figColors(1,:),'-','none')
                 
                 sEL = sortEpochList_time(currentNode.childBySplitValue('Surround').epochList);
                 surroundExampleEpoch = sEL.elements(egEpochToPull);
                 sSeed = surroundExampleEpoch.protocolSettings('surroundNoiseSeed');
                 surroundEpochRes = getNoiseStimulusAndResponse(surroundExampleEpoch,recType,'seedName','surroundNoiseSeed');
-                addLineToAxis(surroundEpochRes.timeVector(1:length(surroundEpochRes.stimulus)),...
-                    surroundEpochRes.stimulus,...
+                addLineToAxis(surroundEpochRes.wholeTrace.timeVector(1:length(surroundEpochRes.wholeTrace.stimulus)),...
+                    surroundEpochRes.wholeTrace.stimulus,...
                     ['stim',num2str(pp)],fig12,figColors(4,:),'-','none')
-                addLineToAxis(surroundEpochRes.timeVector(1:length(surroundEpochRes.stimulus)),...
-                    -surroundEpochRes.response(1:length(surroundEpochRes.stimulus)),...
+                addLineToAxis(surroundEpochRes.wholeTrace.timeVector(1:length(surroundEpochRes.wholeTrace.stimulus)),...
+                    surroundEpochRes.wholeTrace.response(1:length(surroundEpochRes.wholeTrace.stimulus)),...
                     ['resp',num2str(pp)],fig14,figColors(4,:),'-','none')
                 
                 sEL = sortEpochList_time(currentNode.childBySplitValue('Center-Surround').epochList);
@@ -191,8 +220,8 @@ function doCSLNAnalysis(node,varargin)
                 cscSeed = csExampleEpoch.protocolSettings('centerNoiseSeed');
                 cssSeed = csExampleEpoch.protocolSettings('surroundNoiseSeed');
                 csEpochRes = getNoiseStimulusAndResponse(csExampleEpoch,recType,'seedName','centerNoiseSeed');
-                addLineToAxis(csEpochRes.timeVector(1:length(csEpochRes.stimulus)),...
-                    -csEpochRes.response(1:length(csEpochRes.stimulus)),...
+                addLineToAxis(csEpochRes.wholeTrace.timeVector(1:length(csEpochRes.wholeTrace.stimulus)),...
+                    csEpochRes.wholeTrace.response(1:length(csEpochRes.wholeTrace.stimulus)),...
                     ['resp',num2str(pp)],fig15,'k','-','none')
                 checkCenter = ~(cscSeed == cSeed);
                 checkSurround = ~(cssSeed == sSeed);
@@ -206,7 +235,7 @@ function doCSLNAnalysis(node,varargin)
         % if available for testing
         if isempty(repeatedNode) %train on some random seed data. Hold one epoch out to test
             epochLen = length(centerSurround.measuredResponse) / centerSurround.n;
-            epochToHold = 5; %epoch number to hold out
+            epochToHold = 6; %epoch number to hold out
             testDataInds = ((epochToHold-1)*epochLen + 1):(epochToHold*epochLen);
             fitDataInds = setdiff(1:length(centerSurround.measuredResponse),testDataInds);
 
@@ -247,34 +276,61 @@ function doCSLNAnalysis(node,varargin)
         end
         
         %bin up and shape training data:
-        [~,centerGS,~,centerBinID] = ...
-            histcounts_equallyPopulatedBins(trainingData.centerGS,sqrt(bins2D));
-        [~,surroundGS,~,surroundBinID] = ...
-            histcounts_equallyPopulatedBins(trainingData.surroundGS,sqrt(bins2D));
+        if (fitWithEquallyPopulatedBins)
+            %equally populated bins...
+            [~,centerGS,~,centerBinID] = ...
+                histcounts_equallyPopulatedBins(trainingData.centerGS,sqrt(bins2D));
+            [~,surroundGS,~,surroundBinID] = ...
+                histcounts_equallyPopulatedBins(trainingData.surroundGS,sqrt(bins2D));
+        else
+            %evenly-spaced bins...
+            [~,edges,centerBinID] = histcounts(trainingData.centerGS,sqrt(bins2D));
+            centerGS = edges(1:end-1) + diff(edges);
+            [~,edges,surroundBinID] = histcounts(trainingData.surroundGS,sqrt(bins2D));
+            surroundGS = edges(1:end-1) + diff(edges);
+        end
+        
+        
         responseMean = zeros(sqrt(bins2D));
+        responseErr = zeros(sqrt(bins2D));
         for xx = 1:sqrt(bins2D)
             for yy = 1:sqrt(bins2D)
                 jointInds = intersect(find(centerBinID == xx),find(surroundBinID == yy));
-                tempResp = trainingData.csMeasured;
-                responseMean(yy,xx) = mean(tempResp(jointInds)); %responseMean is [surround, center]
+                responseMean(yy,xx) = mean(trainingData.csMeasured(jointInds));
+                responseErr(yy,xx) = std(trainingData.csMeasured(jointInds));
             end
         end
         %1) FIT JOINT NONLINEARITY MODEL. 7 FREE PARAMETERS
         % params = [alpha mu1 mu2 std1 std2 corr12 epsilon]
-        params0 = [max(responseMean(:)), 400, 0, 50, 50, 0, 0];
+        params0 = [3*max(responseMean(:)), 400, 0, 50, 50, 0, 0];
         fitRes_joint = fitNLinearity_2D(centerGS,surroundGS,responseMean,params0);
             %2D fit surface:
             cc = linspace(min(centerGS),max(centerGS),20);
             ss = linspace(min(surroundGS),max(surroundGS),20);
             [CC,SS] = meshgrid(cc',ss');
             fitSurface = JointNLin_mvcn(CC(:)',SS(:)',fitRes_joint.alpha,fitRes_joint.mu,fitRes_joint.sigma,fitRes_joint.epsilon);
-            fitSurface = reshape(fitSurface,length(ss),length(cc)); %#ok<NASGU>
+            fitSurface = reshape(fitSurface,length(ss),length(cc));
+            
+            figure(20); clf
+            subplot(221); hold on;
+            stem3(centerGS,surroundGS,responseMean)
+            surf(cc,ss,fitSurface)
+            xlabel('Center'); ylabel('Surroud')
+            title(['Joint, ',num2str(fitRes_joint.rSquared)])
         
         % 2) FIT INDEPENDENT NONLINEARITY MODEL. 7 FREE PARAMETERS
         %params is [alphaC, betaC, gammaC,...
         %           alphaS, betaS, gammaS, epsilon]
-        params0 = [max(responseMean(:)), center.nonlinearity.fitParams.beta, center.nonlinearity.fitParams.gamma,...
-            max(responseMean(:)), surround.nonlinearity.fitParams.beta, surround.nonlinearity.fitParams.gamma,...
+        upGuess = 3*max(responseMean(:));
+        betaGuess = center.nonlinearity.fitParams.beta;
+        if ismember(pp,[6,9])
+            upGuess = 2*max(responseMean(:));
+        end
+        if pp == 9
+            betaGuess = 0.1;
+        end
+        params0 = [upGuess, betaGuess, center.nonlinearity.fitParams.gamma,...
+            3*max(responseMean(:)), surround.nonlinearity.fitParams.beta, surround.nonlinearity.fitParams.gamma,...
             min([surround.nonlinearity.fitParams.epsilon, center.nonlinearity.fitParams.epsilon])];
         fitRes_indep = fitCSModel_IndependentNL(centerGS,surroundGS,responseMean,params0);
             %2D fit surface:
@@ -283,7 +339,14 @@ function doCSLNAnalysis(node,varargin)
                 fitRes_indep.gammaC,fitRes_indep.alphaS,...
                 fitRes_indep.betaS,fitRes_indep.gammaS,fitRes_indep.epsilon);
 
-            fitSurface = reshape(fitSurface,length(ss),length(cc)); %#ok<NASGU>
+            fitSurface = reshape(fitSurface,length(ss),length(cc));
+            
+            figure(20);
+            subplot(222); hold off;
+            stem3(centerGS,surroundGS,responseMean); hold on;
+            surf(cc,ss,fitSurface)
+            xlabel('Center'); ylabel('Surroud')
+            title(['Indep, ',num2str(fitRes_indep.rSquared)])
             
         if currentNode.custom.get('isExample')
             xxC = min(center.generatorSignal) : max(center.generatorSignal);
@@ -300,13 +363,19 @@ function doCSLNAnalysis(node,varargin)
 
         % 3) FIT SHARED NONLINEARITY MODEL. 5 FREE PARAMETERS
         % params is [a, alpha, beta, gamma, epsilon]
-        params0=[2, max(responseMean(:)), 0.01, 0, 0]';
+        params0=[2, 2*max(responseMean(:)), 0.4, 0, 0]';
         fitRes_shared = fitCSModel_SharedNL(centerGS,surroundGS,responseMean,params0);
             %2D fit surface:
             fitSurface = CSModel_SharedNL(CC(:)',SS(:)',...
                 fitRes_shared.a,fitRes_shared.alpha,fitRes_shared.beta,...
                 fitRes_shared.gamma,fitRes_shared.epsilon);
-            fitSurface = reshape(fitSurface,length(ss),length(cc)); %#ok<NASGU>
+            fitSurface = reshape(fitSurface,length(ss),length(cc));
+
+            subplot(223); hold off;
+            stem3(centerGS,surroundGS,responseMean); hold on;
+            surf(cc,ss,fitSurface)
+            xlabel('Center'); ylabel('Surroud')
+            title(['Shared, ',num2str(fitRes_shared.rSquared)])
             
         if currentNode.custom.get('isExample')
             xxCS = min(center.generatorSignal) + min(surround.generatorSignal) :...
@@ -341,7 +410,7 @@ function doCSLNAnalysis(node,varargin)
             set(0, 'DefaultAxesFontSize', 12)
             set(get(fig10,'XLabel'),'String','Center')
             set(get(fig10,'YLabel'),'String','Surround')
-            set(get(fig10,'ZLabel'),'String','Response (pA)')
+            set(get(fig10,'ZLabel'),'String','Response (nS)')
             surfc(centerGS,surroundGS,responseMean);
             
             %natural image luminances in 2D space
@@ -352,7 +421,7 @@ function doCSLNAnalysis(node,varargin)
             allCStim = [];
             allSStim = [];
             for ss = 1:length(luminanceData)
-                cStim = resample(luminanceData(ss).centerTrajectory,center.updateRate,200);
+                cStim = resample(luminanceData(ss).centerTrajectory,center.sampleRate,200);
                 cStim = (cStim) ./ luminanceData(ss).ImageMax; %stim as presented
 
                 %convert to contrast (relative to mean) for filter convolution
@@ -364,7 +433,7 @@ function doCSLNAnalysis(node,varargin)
                 linearPrediction = linearPrediction(1:length(cStim));
                 centerGenSignal = cat(2,centerGenSignal,linearPrediction);
 
-                sStim = resample(luminanceData(ss).surroundTrajectory,center.updateRate,200);
+                sStim = resample(luminanceData(ss).surroundTrajectory,surround.sampleRate,200);
 
                 sStim = (sStim) ./ luminanceData(ss).ImageMax; %stim as presented
 
@@ -378,12 +447,12 @@ function doCSLNAnalysis(node,varargin)
                 surroundGenSignal = cat(2,surroundGenSignal,linearPrediction);
             end
 
-            figure; clf; fig16=gca; %2D stimulus space with eye movements
-            set(fig16,'XScale','linear','YScale','linear')
+            figure; clf; fig19=gca; %2D stimulus space with eye movements
+            set(fig19,'XScale','linear','YScale','linear')
             set(0, 'DefaultAxesFontSize', 12)
-            set(get(fig16,'XLabel'),'String','Center gen. signal')
-            set(get(fig16,'YLabel'),'String','Surround gen. signal')
-            set(get(fig16,'YLabel'),'String','Probability')
+            set(get(fig19,'XLabel'),'String','Center gen. signal')
+            set(get(fig19,'YLabel'),'String','Surround gen. signal')
+            set(get(fig19,'YLabel'),'String','Probability')
             [N,Xedges,Yedges] = histcounts2(centerGenSignal,surroundGenSignal,sqrt(numberOfBins_em),...
                 'Normalization','probability');
             Ccenters = Xedges(1:end-1) + diff(Xedges);
@@ -417,53 +486,73 @@ function doCSLNAnalysis(node,varargin)
             fitRes_shared.gamma,fitRes_shared.epsilon);
         ss_resid_shared = sum((predictedResponse_shared-testingData.csMeasured).^2);
         rSquaredValues.shared(pp) = 1-ss_resid_shared/ss_total;
-    end
-
-    addLineToAxis(rSquaredValues.indep,rSquaredValues.shared,...
-        'r2',fig5,'k','none','o')
+    end 
+    
+    addLineToAxis(rSquaredValues.indep(ONcellInds),rSquaredValues.shared(ONcellInds),...
+        'ONr2',fig5,'b','none','o')
+    addLineToAxis(rSquaredValues.indep(OFFcellInds),rSquaredValues.shared(OFFcellInds),...
+        'OFFr2',fig5,'r','none','o')
     addLineToAxis([0 1],[0 1],...
         'unity',fig5,'k','--','none')
     
-    figID = ['CSLNfilters_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig1,figID ,'RFSurroundFigs')
+    relativeImprovement = rSquaredValues.shared ./ rSquaredValues.indep;
+    relativeSurroundWeight = filterArea.surround ./ filterArea.center;
     
-    figID = ['CSLNnls_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig2,figID ,'RFSurroundFigs')
+    addLineToAxis(relativeSurroundWeight(ONcellInds),relativeImprovement(ONcellInds),...
+        'ONimprovement',fig16,'b','none','o')
+    addLineToAxis(relativeSurroundWeight(OFFcellInds),relativeImprovement(OFFcellInds),...
+        'OFFimprovement',fig16,'r','none','o')
+    addLineToAxis([0 1.1*max(relativeSurroundWeight)],[1 1],...
+        'oneLine',fig16,'k','--','none')
     
-    figID = ['CSLNindNL_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig3,figID ,'RFSurroundFigs')
+    [rho, pval] = corr(relativeSurroundWeight',relativeImprovement');
+    disp([rho, pval])
     
-    figID = ['CSLNsharedNL_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig4,figID ,'RFSurroundFigs')
-    
-    figID = ['CSLNpopR2_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig5,figID ,'RFSurroundFigs')
-    
-    figID = ['CSLNslice_C_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig6,figID ,'RFSurroundFigs')
+    recID = getRecordingTypeFromEpochList(currentNode.epochList);
+    if (exportFigs)
+        figID = ['CSLNfilters_',recID];
+        makeAxisStruct(fig1,figID ,'RFSurroundFigs')
 
-    figID = ['CSLNslice_S_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig7,figID ,'RFSurroundFigs')
-    
-%     figID = ['CSLNcs_',cellInfo.cellType,'_',recType];
-%     makeAxisStruct(fig8,figID ,'RFSurroundFigs')
-% 
-%     figID = ['CSLNsc_',cellInfo.cellType,'_',recType];
-%     makeAxisStruct(fig9,figID ,'RFSurroundFigs')
+        figID = ['CSLNnls_',recID];
+        makeAxisStruct(fig2,figID ,'RFSurroundFigs')
 
-    figID = ['Cstim_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig11,figID ,'RFSurroundFigs')
-    
-    figID = ['Sstim_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig12,figID ,'RFSurroundFigs')
-    
-    figID = ['Cresp_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig13,figID ,'RFSurroundFigs')
-    
-    figID = ['Sresp_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig14,figID ,'RFSurroundFigs')
-    
-    figID = ['CSresp_',cellInfo.cellType,'_',recType];
-    makeAxisStruct(fig15,figID ,'RFSurroundFigs')
+        figID = ['CSLNindNL_',recID];
+        makeAxisStruct(fig3,figID ,'RFSurroundFigs')
 
+        figID = ['CSLNsharedNL_',recID];
+        makeAxisStruct(fig4,figID ,'RFSurroundFigs')
+
+        figID = ['CSLNpopR2_',recID];
+        makeAxisStruct(fig5,figID ,'RFSurroundFigs')
+
+        figID = ['CSLNslice_C_',recID];
+        makeAxisStruct(fig6,figID ,'RFSurroundFigs')
+
+        figID = ['CSLNslice_S_',recID];
+        makeAxisStruct(fig7,figID ,'RFSurroundFigs')
+
+    %     figID = ['CSLNcs_',cellInfo.cellType,'_',recID];
+    %     makeAxisStruct(fig8,figID ,'RFSurroundFigs')
+    % 
+    %     figID = ['CSLNsc_',cellInfo.cellType,'_',recID];
+    %     makeAxisStruct(fig9,figID ,'RFSurroundFigs')
+
+        figID = ['Cstim_',recID];
+        makeAxisStruct(fig11,figID ,'RFSurroundFigs')
+
+        figID = ['Sstim_',recID];
+        makeAxisStruct(fig12,figID ,'RFSurroundFigs')
+
+        figID = ['Cresp_',recID];
+        makeAxisStruct(fig13,figID ,'RFSurroundFigs')
+
+        figID = ['Sresp_',recID];
+        makeAxisStruct(fig14,figID ,'RFSurroundFigs')
+
+        figID = ['CSresp_',recID];
+        makeAxisStruct(fig15,figID ,'RFSurroundFigs')
+        
+        figID = ['CSLNpopImprove_',recID];
+        makeAxisStruct(fig16,figID ,'RFSurroundFigs')
+    end
 end

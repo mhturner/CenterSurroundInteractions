@@ -68,13 +68,16 @@ end
 gui = epochTreeGUI(tree);
 
 %% CENTER SURROUND NOISE: example cell plotting
-% flag recType nodes in population
+% flag recType nodes in population, example nodes are useRandomSeed = 1
 % select cell type node
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doCSLNAnalysis(parentNode,...
-    'bins2D',6^2,...
-    'bins1D',20);
+    'bins2D',12^2,...
+    'bins1D',20,...
+    'exportFigs',true,...
+    'convertToConductance',true,...
+    'fitWithEquallyPopulatedBins',true);
 
 %% all data: model-free, where are failures of additivity?
 numberOfBins = 8^2;
@@ -272,7 +275,7 @@ gui = epochTreeGUI(tree);
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLECSAnalysis(parentNode,'metric','integrated',...
-    'figureID','ParSpikes');
+    'figureID','OFFparSpikes');
 
 %%
 clc;
@@ -282,7 +285,7 @@ resourcesDir = '~/Documents/MATLAB/turner-package/resources';
 patchSize = 100; %pixels
 MicronsPerPixel = 6.6;
 patchesPerImage = 100;
-ImageID = 'imk03093';
+ImageID = 'imk01769';
 
 RFmodel = ThreeLayerReceptiveFieldModel;
 RFmodel.MicronsPerPixel = MicronsPerPixel;
