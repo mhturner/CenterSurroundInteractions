@@ -119,8 +119,8 @@ function doCSLNAnalysis(node,varargin)
         end
     end
     
-    filterArea.center = [];
-    filterArea.surround = [];
+    filters.center = [];
+    filters.surround = [];
     
     rSquaredValues.joint = [];
     rSquaredValues.indep = [];
@@ -161,8 +161,8 @@ function doCSLNAnalysis(node,varargin)
         centerSurround = getLinearFilterAndPrediction(currentNode.childBySplitValue('Center-Surround').epochList,recType,...
             'seedName','centerNoiseSeed','numberOfBins',bins1D);
         
-        filterArea.center(pp) = trapz(abs(center.LinearFilter));
-        filterArea.surround(pp) = trapz(abs(surround.LinearFilter));
+        filters.center(pp,:) = center.LinearFilter;
+        filters.surround(pp,:) = surround.LinearFilter;
 
         if currentNode.custom.get('isExample')
                 addLineToAxis([0 center.filterTimeVector],[0 center.LinearFilter],...
@@ -235,7 +235,7 @@ function doCSLNAnalysis(node,varargin)
         % if available for testing
         if isempty(repeatedNode) %train on some random seed data. Hold one epoch out to test
             epochLen = length(centerSurround.measuredResponse) / centerSurround.n;
-            epochToHold = 6; %epoch number to hold out
+            epochToHold = 3; %epoch number to hold out
             testDataInds = ((epochToHold-1)*epochLen + 1):(epochToHold*epochLen);
             fitDataInds = setdiff(1:length(centerSurround.measuredResponse),testDataInds);
 
@@ -323,11 +323,9 @@ function doCSLNAnalysis(node,varargin)
         %           alphaS, betaS, gammaS, epsilon]
         upGuess = 3*max(responseMean(:));
         betaGuess = center.nonlinearity.fitParams.beta;
-        if ismember(pp,[6,9])
-            upGuess = 2*max(responseMean(:));
-        end
-        if pp == 9
+        if pp == 7
             betaGuess = 0.1;
+            upGuess = 2*max(responseMean(:));
         end
         params0 = [upGuess, betaGuess, center.nonlinearity.fitParams.gamma,...
             3*max(responseMean(:)), surround.nonlinearity.fitParams.beta, surround.nonlinearity.fitParams.gamma,...
@@ -405,13 +403,23 @@ function doCSLNAnalysis(node,varargin)
                     ['surroundRef',num2str(ii)],fig9,colors(ii,:),'-','none')
             end
             
-            figure; clf; fig10=gca; %2D mesh response matrix
-            set(fig10,'XScale','linear','YScale','linear')
-            set(0, 'DefaultAxesFontSize', 12)
-            set(get(fig10,'XLabel'),'String','Center')
-            set(get(fig10,'YLabel'),'String','Surround')
-            set(get(fig10,'ZLabel'),'String','Response (nS)')
-            surfc(centerGS,surroundGS,responseMean);
+            figure(17); clf;
+            h = surf(centerGS,surroundGS,responseMean);
+            h.FaceAlpha = 0.4;
+            h.EdgeAlpha = 0.5;
+            xlabel('Center activation','FontSize',14);
+            ylabel('Surround activation','FontSize',14);
+            zlabel('Response (nS)','FontSize',14)
+            colormap(gray); caxis([-2, 15])
+            hold on; plot3(centerGS,...
+                surroundGS(1).*ones(size(centerGS)),...
+                responseMean(1,:),'Color',colors(1,:),...
+                'LineWidth',5,'Marker','none')
+            hold on; plot3(centerGS,...
+                surroundGS(end).*ones(size(centerGS)),...
+                responseMean(end,:),'Color',colors(end,:),...
+                'LineWidth',5,'Marker','none')
+            view(-21,16)
             
             %natural image luminances in 2D space
             load('~/Documents/MATLAB/turner-package/resources/SaccadeLuminanceTrajectoryStimuli_20160919.mat')
@@ -486,7 +494,8 @@ function doCSLNAnalysis(node,varargin)
             fitRes_shared.gamma,fitRes_shared.epsilon);
         ss_resid_shared = sum((predictedResponse_shared-testingData.csMeasured).^2);
         rSquaredValues.shared(pp) = 1-ss_resid_shared/ss_total;
-    end 
+
+    end
     
     addLineToAxis(rSquaredValues.indep(ONcellInds),rSquaredValues.shared(ONcellInds),...
         'ONr2',fig5,'b','none','o')
@@ -494,9 +503,12 @@ function doCSLNAnalysis(node,varargin)
         'OFFr2',fig5,'r','none','o')
     addLineToAxis([0 1],[0 1],...
         'unity',fig5,'k','--','none')
+    disp(rSquaredValues);
     
     relativeImprovement = rSquaredValues.shared ./ rSquaredValues.indep;
-    relativeSurroundWeight = filterArea.surround ./ filterArea.center;
+    surroundWts = trapz(abs(filters.surround),2);
+    centerWts = trapz(abs(filters.center),2);
+    relativeSurroundWeight = surroundWts ./ centerWts;
     
     addLineToAxis(relativeSurroundWeight(ONcellInds),relativeImprovement(ONcellInds),...
         'ONimprovement',fig16,'b','none','o')
@@ -505,7 +517,7 @@ function doCSLNAnalysis(node,varargin)
     addLineToAxis([0 1.1*max(relativeSurroundWeight)],[1 1],...
         'oneLine',fig16,'k','--','none')
     
-    [rho, pval] = corr(relativeSurroundWeight',relativeImprovement');
+    [rho, pval] = corr(relativeSurroundWeight,relativeImprovement');
     disp([rho, pval])
     
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
