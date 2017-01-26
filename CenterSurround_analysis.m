@@ -577,7 +577,191 @@ pcolor(sigmas.Center,sigmas.Surround,responses.CenterSurround)
 colormap(hot)
 xlabel('Center'); ylabel('Surround'); colorbar;
 
+%% CenterF2 Plus Surround: tree
+
+list = loader.loadEpochList([dataFolder,'CenterF2PlusSurround.mat'],dataFolder);
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+cellTypeSplit = @(list)splitOnCellType(list);
+cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    recordingSplit_java,...
+    'protocolSettings(flashDelay)',...
+    'protocolSettings(flashDuration)',...
+    'protocolSettings(temporalFrequency)',...
+    'protocolSettings(centerContrast)',...
+    'protocolSettings(surroundContrast)',...
+    'protocolSettings(currentStimulus)'});
+gui = epochTreeGUI(tree);
+
+%%
+
+parentNode = gui.getSelectedEpochTreeNodes{1};
+
+surroundAloneNode = parentNode.childBySplitValue(0).childBySplitValue(0.9);
+surroundMean = getMeanResponseTrace(surroundAloneNode.epochList,'exc');
+
+TestNode = parentNode.childBySplitValue(0.25).childBySplitValue(0.9);
+F1mean = getMeanResponseTrace(TestNode.childBySplitValue('FullField').epochList,'exc');
+F2mean = getMeanResponseTrace(TestNode.childBySplitValue('SplitField').epochList,'exc');
 
 
+figure(2); clf;
+subplot(211); hold on; 
+plot(surroundMean.timeVector,surroundMean.mean,'k')
+plot(F1mean.timeVector,F1mean.mean,'b')
+plot(F2mean.timeVector,F2mean.mean,'r')
+
+subplot(212); hold on;
+plot(surroundMean.timeVector,F1mean.mean-surroundMean.mean,'b')
+plot(surroundMean.timeVector,F2mean.mean-surroundMean.mean,'r')
+
+periodLen = round(1 / TestNode.epochList.firstValue.protocolSettings('temporalFrequency') .* 1e4); %dataPts
+prePoints = TestNode.epochList.firstValue.protocolSettings('preTime') .* 10; %dataPts
+startPoint = prePoints + 2*periodLen;
+endPoint = startPoint + 5.*periodLen;
+cycles = zeros(5,periodLen);
+cyclesF2 = zeros(5,periodLen);
+for cc = 1:5
+    currentStart = startPoint + (cc-1)*periodLen + 1;
+    currentEnd = startPoint + cc * periodLen;
+    cycles(cc,:) = F1mean.mean(currentStart:currentEnd);
+    cyclesF2(cc,:) = F2mean.mean(currentStart:currentEnd);
+end
+
+cycleAvg = -mean(cycles,1); %flip exc to positive
+F2Resp = -mean(cyclesF2,2);
+timeVec = (0:(periodLen-1)) ./ 1e4; %sec
+tF = 8;
+
+% b(1) is amplitude. Freq is fixed. Offset & phase allowed to
+% vary
+modelFun = @(b,t)(b(1).*(sin(2*pi*t.*tF + b(2))) + b(3));
+beta0 = [max(cycleAvg);0;0];
+beta = nlinfit(timeVec,cycleAvg,modelFun,beta0);
+
+stimulus_F1 = modelFun([0.5,beta(2),0],timeVec);
+stimulus_RightF2 = modelFun([0.5,beta(2),0],timeVec);
+stimulus_LeftF2 = modelFun([0.5,beta(2)+pi,0],timeVec);
+
+params0 = [1e4, 0.5, -4, 0];
+fitRes = fitCRF_cumGauss(stimulus_F1,cycleAvg,params0);
+
+figure(4); clf;
+subplot(121)
+plot(timeVec,cycleAvg,'b')
+subplot(122); hold on;
+plot(stimulus_F1,cycleAvg,'b')
+fitXX = -1:0.01:1;
+fitYY = CRFcumGauss(fitXX,...
+    fitRes.alphaScale,...
+    fitRes.betaSens,...
+    fitRes.gammaXoff,...
+    fitRes.epsilonYoff);
+plot(fitXX, fitYY,'k')
+
+%long trace predictions
+timeVec = (0:(16*periodLen-1)) ./ 1e4; %sec
+stimulus_F1 = modelFun([0.9,beta(2),0],timeVec);
+stimulus_RightF2 = modelFun([0.9,beta(2),0],timeVec);
+stimulus_LeftF2 = modelFun([0.9,beta(2)+pi,0],timeVec);
+
+stepTime = find(timeVec >= 0.8625,1);
+stepStimulus = zeros(size(timeVec));
+stepStimulus(stepTime + 1 : stepTime + 2500) = 0.5 * 0.9;
+
+%indep stims...
+F1prediction = CRFcumGauss(stimulus_F1,...
+    fitRes.alphaScale,...
+    fitRes.betaSens,...
+    fitRes.gammaXoff,...
+    fitRes.epsilonYoff);
+
+F2left = 0.5*CRFcumGauss(stimulus_LeftF2,...
+    fitRes.alphaScale,...
+    fitRes.betaSens,...
+    fitRes.gammaXoff,...
+    fitRes.epsilonYoff);
+
+F2right = 0.5*CRFcumGauss(stimulus_RightF2,...
+    fitRes.alphaScale,...
+    fitRes.betaSens,...
+    fitRes.gammaXoff,...
+    fitRes.epsilonYoff);
+
+stepPrediction = CRFcumGauss(stepStimulus,...
+    fitRes.alphaScale,...
+    fitRes.betaSens,...
+    fitRes.gammaXoff,...
+    fitRes.epsilonYoff);
+
+F2prediction = F2left + F2right;
+
+figure(5); clf;
+hold on;
+plot(timeVec,F1prediction,'b')
+plot(timeVec,F2prediction,'r')
+plot(timeVec,stepPrediction,'k')
+
+
+%plus step stims
+F1prediction = CRFcumGauss(stimulus_F1 + stepStimulus,...
+    fitRes.alphaScale,...
+    fitRes.betaSens,...
+    fitRes.gammaXoff,...
+    fitRes.epsilonYoff);
+
+F2left = 0.5*CRFcumGauss(stimulus_LeftF2 + stepStimulus,...
+    fitRes.alphaScale,...
+    fitRes.betaSens,...
+    fitRes.gammaXoff,...
+    fitRes.epsilonYoff);
+
+F2right = 0.5*CRFcumGauss(stimulus_RightF2 + stepStimulus,...
+    fitRes.alphaScale,...
+    fitRes.betaSens,...
+    fitRes.gammaXoff,...
+    fitRes.epsilonYoff);
+
+F2prediction = F2left + F2right;
+
+figure(6); clf;
+hold on;
+plot(timeVec,F1prediction,'b')
+plot(timeVec,F2prediction,'r')
+plot(timeVec,stepPrediction,'k')
+
+%% LINEAR EQUIVALENT DISC MOD SURROUND: tree
+list = loader.loadEpochList([dataFolder,'LinearEquivalentDiscModSurround.mat'],dataFolder);
+
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+cellTypeSplit = @(list)splitOnCellType(list);
+cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+locationSplit = @(list)splitOnJavaArrayList(list,'currentPatchLocation');
+locationSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, locationSplit);
+
+tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    recordingSplit_java,...
+    'protocolSettings(imageName)',...
+    locationSplit_java,...
+    'protocolSettings(currentSurroundContrast)',...
+    'protocolSettings(stimulusTag)'});
+
+gui = epochTreeGUI(tree);
+
+%% flag recType nodes, set patch location as examples
+% select cell type as parentNode
+
+clc;
+parentNode = gui.getSelectedEpochTreeNodes{1};
+doLEDModSurroundAnalysis(parentNode,...
+    'metric','integrated','figureID','OFFexc');
+
+% ,'figureID','OFFspk'
 
 
