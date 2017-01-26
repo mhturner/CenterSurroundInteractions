@@ -17,11 +17,8 @@ recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, r
 cellTypeSplit = @(list)splitOnCellType(list);
 cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
 
-centerSplit = @(list)splitOnJavaArrayList(list,'centerOffset');
-centerSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, centerSplit);
-
 tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
-    recordingSplit_java,centerSplit_java,...
+    recordingSplit_java,...
     'protocolSettings(spotIntensity)','protocolSettings(currentSpotSize)'});
 
 gui = epochTreeGUI(tree);
@@ -42,8 +39,34 @@ parentNode = gui.getSelectedEpochTreeNodes{1};
 doAreaSummationAnalysis(parentNode,'metric','integrated',...
     'amplitudeMultiplier',1,'figureID','Horizontal');
 
+%% example traces figs, for methods slides
+%select capsules (individual epochs)
+parentNode = gui.getSelectedEpochTreeNodes{1};
+recType = getRecordingTypeFromEpochList(parentNode.epochList);
+if strcmp(recType,'extracellular')
+    recType = 'none';
+end
+cellInfo = getCellInfoFromEpochList(parentNode.epochList);
+responseTrace = getMeanResponseTrace(parentNode.epochList,recType);
+if responseTrace.n > 1
+   error('More than one epoch selected') 
+end
+
+figure; clf;
+fig1=gca; % Response trace
+set(fig1,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig1,'XLabel'),'String','Time (s)')
+
+addLineToAxis(responseTrace.timeVector,responseTrace.mean,...
+                    'trace',fig1,'k','-','none')
+recType = getRecordingTypeFromEpochList(parentNode.epochList);
+addLineToAxis(0,0,[cellInfo.cellID,'_',recType],fig1,'k','none','none')
+
+figureID = ['egTrace_',cellInfo.cellType(1:3),'_',recType];
+makeAxisStruct(fig1,figureID ,'RFSurroundFigs')
 %% CONTRAST-REVERSING GRATINGS: tree
-saveFileID = 'CRGs_ParasolExcAndHorizontal';
+% saveFileID = 'CRGs_ParasolExcAndHorizontal';
 
 list = loader.loadEpochList([dataFolder,'CRG-noDrug.mat'],dataFolder);
 recordingSplit = @(list)splitOnRecKeyword(list);
