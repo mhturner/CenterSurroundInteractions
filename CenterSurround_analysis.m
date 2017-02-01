@@ -67,17 +67,68 @@ end
 
 gui = epochTreeGUI(tree);
 
-%% CENTER SURROUND NOISE: example cell plotting
+%% CENTER SURROUND NOISE: cascade model plotting
 % flag recType nodes in population, example nodes are useRandomSeed = 1
-% select cell type node
-clc;
+% select tree node (does ON & OFF in pop analysis together)
+clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doCSLNAnalysis(parentNode,...
     'bins2D',15^2,...
     'bins1D',20,...
-    'exportFigs',true,...
+    'exportFigs',false,...
     'convertToConductance',true,...
     'fitWithEquallyPopulatedBins',true);
+
+%% CENTER SURROUND ADDITIVITY: tree
+ % Halfway done. use this for additivity analysis of csCorrelatedNoise and
+ % NatImageCSLuminance data
+list = loader.loadEpochList([dataFolder,'CenterSurroundNoise.mat'],dataFolder);
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+cellTypeSplit = @(list)splitOnCellType(list);
+cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+protocolSplit = @(list)splitOnShortProtocolID(list);
+protocolSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, protocolSplit);
+
+tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    recordingSplit_java,...
+    protocolSplit_java,...
+    'protocolSettings(useRandomSeed)',...
+    'protocolSettings(currentStimulus)'});
+
+%check that some parameters are consistent within recordings...
+constantSettings = {'centerOffset','backgroundIntensity','preTime',...
+    'tailTime','frameDwell','annulusInnerDiameter',...
+    'centerDiameter','annulusOuterDiameter','noiseStdv'};
+for cellTypeIndex = 1:tree.children.length
+    for cellNameIndex = 1:tree.children(cellTypeIndex).children.length
+        for recTypeIndex = 1:tree.children(cellTypeIndex).children(cellNameIndex).length
+            newEL = tree.children(cellTypeIndex).children(cellNameIndex).children(recTypeIndex).epochList;
+            [outEpochList, outParams] = makeUniformEpochList(newEL,constantSettings,[]);
+        end
+    end
+end
+
+gui = epochTreeGUI(tree);
+
+%% CENTER SURROUND ADDITIVITY: CS additivity analysis
+ % Halfway done. use this for additivity analysis of csCorrelatedNoise and
+ % NatImageCSLuminance data
+
+
+% flag and example recType nodes in population
+% select cell type node
+% Uses CenterSurroundNoise, useRandomSeed = 1 to get filters.
+clc;
+parentNode = gui.getSelectedEpochTreeNodes{1};
+doCSAdditivityAnalysis(parentNode,...
+    'bins2D',15^2,...
+    'exportFigs',false,...
+    'convertToConductance',true,...
+    'protocolID',''); %'', 
+
 
 %% all data: model-free, where are failures of additivity?
 numberOfBins = 8^2;
