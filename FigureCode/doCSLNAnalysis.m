@@ -23,54 +23,63 @@ function doCSLNAnalysis(node,varargin)
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig1,'XLabel'),'String','Time (s)')
     set(get(fig1,'YLabel'),'String','')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig2=gca; %Nonlinearities
     set(fig2,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig2,'XLabel'),'String','Linear prediction (nS)')
     set(get(fig2,'YLabel'),'String','Measured (nS)')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig3=gca; %Independent nonlinearities
     set(fig3,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig3,'XLabel'),'String','Linear prediction (nS)')
     set(get(fig3,'YLabel'),'String','Measured (nS)')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig4=gca; %Shared nonlinearity
     set(fig4,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig4,'XLabel'),'String','Linear prediction (nS)')
     set(get(fig4,'YLabel'),'String','Measured (nS)')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig5=gca; %population R-squared results
     set(fig5,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig5,'XLabel'),'String','R^2 independent nonlinearities')
     set(get(fig5,'YLabel'),'String','R^2 shared nonlinearity')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig6=gca; %slice of center, modulate surround
     set(fig6,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig6,'XLabel'),'String','Surround activation')
     set(get(fig6,'YLabel'),'String','Response (nS)')
-
+    set(gcf, 'WindowStyle', 'docked')
+    
     figure; clf; fig7=gca; %slice of surround, modulate center
     set(fig7,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig7,'XLabel'),'String','Center activation')
     set(get(fig7,'YLabel'),'String','Response (nS)')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig8=gca; %center +/- surround overlay
     set(fig8,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig8,'XLabel'),'String','Center +/- surround')
     set(get(fig8,'YLabel'),'String','Response (nS)')
-
+    set(gcf, 'WindowStyle', 'docked')
+    
     figure; clf; fig9=gca; %surround +/- center overlay
     set(fig9,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig9,'XLabel'),'String','Surround +/- center')
     set(get(fig9,'YLabel'),'String','Response (nS)')
+    set(gcf, 'WindowStyle', 'docked')
     
     % Individual traces for example cell:
     figure; clf; fig11=gca; %center stim
@@ -78,36 +87,42 @@ function doCSLNAnalysis(node,varargin)
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig11,'XLabel'),'String','Time (s)')
     set(get(fig11,'YLabel'),'String','Contrast')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig12=gca; %surround stim
     set(fig12,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig12,'XLabel'),'String','Time (s)')
     set(get(fig12,'YLabel'),'String','Contrast')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig13=gca; %center response
     set(fig13,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig13,'XLabel'),'String','Time (s)')
     set(get(fig13,'YLabel'),'String','Response (nS)')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig14=gca; %surround response
     set(fig14,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig14,'XLabel'),'String','Time (s)')
     set(get(fig14,'YLabel'),'String','Response (nS)')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig15=gca; %center-surround response
     set(fig15,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig15,'XLabel'),'String','Time (s)')
     set(get(fig15,'YLabel'),'String','Response (nS)')
+    set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig16=gca; %improvement in R2 vs surround weight
     set(fig16,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig16,'XLabel'),'String','Relative surround weight')
     set(get(fig16,'YLabel'),'String','Improvement over independent model')
+    set(gcf, 'WindowStyle', 'docked')
 
     populationNodes = {};
     ct = 0;
@@ -165,9 +180,9 @@ function doCSLNAnalysis(node,varargin)
         filters.surround(pp,:) = surround.LinearFilter;
 
         if currentNode.custom.get('isExample')
-                addLineToAxis([0 center.filterTimeVector],[0 center.LinearFilter],...
+                addLineToAxis([center.filterTimeVector],[center.LinearFilter],...
                     ['center',num2str(pp)],fig1,figColors(1,:),'-','none')
-                addLineToAxis([0 surround.filterTimeVector],[0 surround.LinearFilter],...
+                addLineToAxis([surround.filterTimeVector],[surround.LinearFilter],...
                     ['surround',num2str(pp)],fig1,figColors(4,:),'-','none')
                 
                 addLineToAxis(center.nonlinearity.binMean,center.nonlinearity.respMean,...
@@ -242,6 +257,8 @@ function doCSLNAnalysis(node,varargin)
             trainingData.centerGS = center.generatorSignal(fitDataInds);
             trainingData.surroundGS = surround.generatorSignal(fitDataInds);
             trainingData.csMeasured = centerSurround.measuredResponse(fitDataInds);
+            trainingData.cMeasured = center.measuredResponse(fitDataInds);
+            trainingData.sMeasured = surround.measuredResponse(fitDataInds);
             
             testingData.centerGS = center.generatorSignal(testDataInds);
             testingData.surroundGS = surround.generatorSignal(testDataInds);
@@ -250,6 +267,8 @@ function doCSLNAnalysis(node,varargin)
             trainingData.centerGS = center.generatorSignal;
             trainingData.surroundGS = surround.generatorSignal;
             trainingData.csMeasured = centerSurround.measuredResponse;
+            trainingData.cMeasured = center.measuredResponse;
+            trainingData.sMeasured = surround.measuredResponse;
             
             % get test data...
             % center GS:
@@ -290,12 +309,15 @@ function doCSLNAnalysis(node,varargin)
             surroundGS = edges(1:end-1) + diff(edges);
         end
         
-        
+        centerMean = zeros(sqrt(bins2D));
+        surroundMean = zeros(sqrt(bins2D));
         responseMean = zeros(sqrt(bins2D));
         responseErr = zeros(sqrt(bins2D));
         for xx = 1:sqrt(bins2D)
             for yy = 1:sqrt(bins2D)
                 jointInds = intersect(find(centerBinID == xx),find(surroundBinID == yy));
+                centerMean(yy,xx) = mean(trainingData.cMeasured(jointInds));
+                surroundMean(yy,xx) = mean(trainingData.sMeasured(jointInds));
                 responseMean(yy,xx) = mean(trainingData.csMeasured(jointInds));
                 responseErr(yy,xx) = std(trainingData.csMeasured(jointInds));
             end
@@ -311,7 +333,7 @@ function doCSLNAnalysis(node,varargin)
             fitSurface = JointNLin_mvcn(CC(:)',SS(:)',fitRes_joint.alpha,fitRes_joint.mu,fitRes_joint.sigma,fitRes_joint.epsilon);
             fitSurface = reshape(fitSurface,length(ss),length(cc));
             
-            figure(20); clf
+            figure(20); clf; set(gcf, 'WindowStyle', 'docked')
             subplot(221); hold on;
             stem3(centerGS,surroundGS,responseMean)
             surf(cc,ss,fitSurface)
@@ -403,7 +425,7 @@ function doCSLNAnalysis(node,varargin)
                     ['surroundRef',num2str(ii)],fig9,colors(ii,:),'-','none')
             end
             
-            figure(17); clf;
+            figure(17); clf; set(gcf, 'WindowStyle', 'docked')
             h = surf(centerGS,surroundGS,responseMean);
             h.FaceAlpha = 0.4;
             h.EdgeAlpha = 0.5;
@@ -421,6 +443,30 @@ function doCSLNAnalysis(node,varargin)
                 'LineWidth',5,'Marker','none')
             view(-21,16)
             
+            % Devation from linear summation
+            linearSumResponse = centerMean + surroundMean;
+            linearDeviationMatrix = responseMean - linearSumResponse;
+            figure(18); clf;
+            subplot(121);
+            hs1 = surf(centerGS,surroundGS,responseMean); 
+            colormap(hot); caxis([-2, 15]); freezeColors;
+            xlabel('Center activation','FontSize',14);
+            ylabel('Surround activation','FontSize',14);
+            zlabel('Response (nS)','FontSize',14)
+            hold on;
+            hs2 = surf(centerGS,surroundGS,linearSumResponse);
+            colormap(gray); caxis([-2, 15]); freezeColors;
+            hs2.FaceAlpha = 0.4;
+            hs2.EdgeAlpha = 0.5;
+            view(-21,16)
+            subplot(122);
+            hs3 = surf(centerGS,surroundGS,linearDeviationMatrix);
+            xlabel('Center activation','FontSize',14);
+            ylabel('Surround activation','FontSize',14);
+            zlabel('Measured - Linear Sum (nS)','FontSize',14)
+            view(-21,16)
+            
+ 
             %natural image luminances in 2D space
             load('~/Documents/MATLAB/turner-package/resources/SaccadeLuminanceTrajectoryStimuli_20160919.mat')
             numberOfBins_em = 100^2;
@@ -456,6 +502,7 @@ function doCSLNAnalysis(node,varargin)
             end
 
             figure; clf; fig19=gca; %2D stimulus space with eye movements
+            set(gcf, 'WindowStyle', 'docked')
             set(fig19,'XScale','linear','YScale','linear')
             set(0, 'DefaultAxesFontSize', 12)
             set(get(fig19,'XLabel'),'String','Center gen. signal')
