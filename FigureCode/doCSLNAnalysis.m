@@ -123,6 +123,20 @@ function doCSLNAnalysis(node,varargin)
     set(get(fig16,'XLabel'),'String','Relative surround weight')
     set(get(fig16,'YLabel'),'String','Improvement over independent model')
     set(gcf, 'WindowStyle', 'docked')
+    
+    figure; clf; fig17=gca; %ThreeNL model c & s nonlinearities
+    set(fig17,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig17,'XLabel'),'String','Linear prediction (nS)')
+    set(get(fig17,'YLabel'),'String','Output (a.u.)')
+    set(gcf, 'WindowStyle', 'docked')
+    
+    figure; clf; fig18=gca; %ThreeNL model output nonlinearity
+    set(fig18,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig18,'XLabel'),'String','Combined C + S input (a.u.)')
+    set(get(fig18,'YLabel'),'String','Measured (nS)')
+    set(gcf, 'WindowStyle', 'docked')
 
     populationNodes = {};
     ct = 0;
@@ -140,6 +154,7 @@ function doCSLNAnalysis(node,varargin)
     rSquaredValues.joint = [];
     rSquaredValues.indep = [];
     rSquaredValues.shared = [];
+    rSquaredValues.threeNL = [];
     ONcellInds = [];
     OFFcellInds = [];
     for pp = 1:length(populationNodes)
@@ -397,16 +412,66 @@ function doCSLNAnalysis(node,varargin)
             xlabel('Center'); ylabel('Surroud')
             title(['Shared, ',num2str(fitRes_shared.rSquared)])
             
-        if currentNode.custom.get('isExample')
-            xxCS = min(center.generatorSignal) + min(surround.generatorSignal) :...
-                max(center.generatorSignal) + max(surround.generatorSignal);
-            rCS = fitRes_shared.epsilon + fitRes_shared.alpha * ...
-                normcdf(fitRes_shared.beta * xxCS + fitRes_shared.gamma,0,1);
-            addLineToAxis(xxCS,rCS,...
-                ['sharedNL',num2str(pp)],fig4,'k','-','none')
+            if currentNode.custom.get('isExample')
+                xxCS = min(center.generatorSignal) + min(surround.generatorSignal) :...
+                    max(center.generatorSignal) + max(surround.generatorSignal);
+                rCS = fitRes_shared.epsilon + fitRes_shared.alpha * ...
+                    normcdf(fitRes_shared.beta * xxCS + fitRes_shared.gamma,0,1);
+                addLineToAxis(xxCS,rCS,...
+                    ['sharedNL',num2str(pp)],fig4,'k','-','none')
+            end
+            
+            
+        % 4) FIT THREE NONLINEARITY MODEL. 10 FREE PARAMETERS
+        %params is [alphaC, betaC, gammaC,...
+        %           alphaS, betaS, gammaS, ...
+        %           alphaShared, betaShared, gammaShared, epsilon]
+        upGuess = 3*max(responseMean(:));
+        betaGuess = center.nonlinearity.fitParams.beta;
+        epsilonGuess  = min([surround.nonlinearity.fitParams.epsilon, center.nonlinearity.fitParams.epsilon]);
+
+        params0 = [1, 0.1, 0,...
+            1, 0.1, 0,...
+            upGuess, betaGuess, center.nonlinearity.fitParams.gamma,...
+            epsilonGuess];
+        fitRes_ThreeNL = fitCSModel_ThreeNL(centerGS,surroundGS,responseMean,params0);
+            %2D fit surface:
+            fitSurface = CSModel_ThreeNL(CC(:)',SS(:)',...
+                fitRes_ThreeNL.alphaC,fitRes_ThreeNL.betaC,fitRes_ThreeNL.gammaC,...
+                fitRes_ThreeNL.alphaS,fitRes_ThreeNL.betaS,fitRes_ThreeNL.gammaS,...
+                fitRes_ThreeNL.alphaShared,fitRes_ThreeNL.betaShared,fitRes_ThreeNL.gammaShared,...
+                fitRes_ThreeNL.epsilon);
+
+            fitSurface = reshape(fitSurface,length(ss),length(cc));
+            
+            figure(20);
+            subplot(224); hold off;
+            stem3(centerGS,surroundGS,responseMean); hold on;
+            surf(cc,ss,fitSurface)
+            xlabel('Center'); ylabel('Surroud')
+            title(['ThreeNL, ',num2str(fitRes_ThreeNL.rSquared)])
+            
+            if currentNode.custom.get('isExample')
+                xxC = min(center.generatorSignal) : max(center.generatorSignal);
+                xxS = min(surround.generatorSignal) : max(surround.generatorSignal);
+                rC = fitRes_ThreeNL.alphaC * ...
+                    normcdf(fitRes_ThreeNL.betaC * xxC + fitRes_ThreeNL.gammaC,0,1);
+                rS = fitRes_ThreeNL.alphaS * ...
+                    normcdf(fitRes_ThreeNL.betaS.* xxS + fitRes_ThreeNL.gammaS,0,1);
+                xxCS = linspace(min(rC) + min(rS), max(rC) + max(rS),100);
+                rOut = fitRes_ThreeNL.alphaShared * ...
+                    normcdf(fitRes_ThreeNL.betaShared.* xxCS + fitRes_ThreeNL.gammaShared,0,1);
+                addLineToAxis(xxC,rC,...
+                    ['center',num2str(pp)],fig17,figColors(1,:),'-','none')
+                addLineToAxis(xxS,rS,...
+                    ['surround',num2str(pp)],fig17,figColors(4,:),'-','none')
+                addLineToAxis(xxCS,rOut,...
+                    ['output',num2str(pp)],fig18,'k','-','none')
+            end
+
             
 % % % % % % % % MODEL-FREE: SLICES THRU RESPONSE MATRIX % % % % % % % % % % % % % % %
-
+        if currentNode.custom.get('isExample')
             % Slices thru 2d nonlinearity
             colors = pmkmp(length(centerGS));
             for ii = 1:length(centerGS)
@@ -425,7 +490,7 @@ function doCSLNAnalysis(node,varargin)
                     ['surroundRef',num2str(ii)],fig9,colors(ii,:),'-','none')
             end
             
-            figure(17); clf; set(gcf, 'WindowStyle', 'docked')
+            figure(21); clf; set(gcf, 'WindowStyle', 'docked')
             h = surf(centerGS,surroundGS,responseMean);
             h.FaceAlpha = 0.4;
             h.EdgeAlpha = 0.5;
@@ -446,7 +511,7 @@ function doCSLNAnalysis(node,varargin)
             % Devation from linear summation
             linearSumResponse = centerMean + surroundMean;
             linearDeviationMatrix = responseMean - linearSumResponse;
-            figure(18); clf;
+            figure(22); clf; set(gcf, 'WindowStyle', 'docked')
             subplot(121);
             hs1 = surf(centerGS,surroundGS,responseMean); 
             colormap(hot); caxis([-2, 15]); freezeColors;
@@ -465,6 +530,20 @@ function doCSLNAnalysis(node,varargin)
             ylabel('Surround activation','FontSize',14);
             zlabel('Measured - Linear Sum (nS)','FontSize',14)
             view(-21,16)
+            
+            % 2D histogram of measured vs linear sum
+            linearSumResponse = trainingData.cMeasured + trainingData.sMeasured;
+            measuredCSResponse = trainingData.csMeasured;
+            figure(21); clf; set(gcf, 'WindowStyle', 'docked');
+            [N,Xedges,Yedges] = histcounts2(linearSumResponse,measuredCSResponse,100,...
+                'Normalization','probability');
+            xCtrs = Xedges(1:end-1) + diff(Xedges);
+            yCtrs = Yedges(1:end-1) + diff(Yedges);
+            pcolor(xCtrs,yCtrs,log10(N)); shading flat;
+            colormap(hot); cb = colorbar; ylabel(cb,'Log(probability)');
+            hold on;
+            plot([0 max(measuredCSResponse)],[0 max(measuredCSResponse)],'w--')
+            xlabel('R(C) + R(S)'); ylabel('R(C + S)');
             
  
             %natural image luminances in 2D space
@@ -519,7 +598,7 @@ function doCSLNAnalysis(node,varargin)
             xlabel('Center'); ylabel('Surround'); zlabel('Probability')
             colorbar
             
-        end
+        end %example plotting of model-free additivity stuff
 
 % % % % % % % % PREDICTIONS % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
         ss_total = sum((testingData.csMeasured-mean(testingData.csMeasured)).^2);
@@ -541,6 +620,14 @@ function doCSLNAnalysis(node,varargin)
             fitRes_shared.gamma,fitRes_shared.epsilon);
         ss_resid_shared = sum((predictedResponse_shared-testingData.csMeasured).^2);
         rSquaredValues.shared(pp) = 1-ss_resid_shared/ss_total;
+        
+        predictedResponse_threeNL = CSModel_ThreeNL(testingData.centerGS, testingData.surroundGS,...
+            fitRes_ThreeNL.alphaC,fitRes_ThreeNL.betaC,fitRes_ThreeNL.gammaC,...
+            fitRes_ThreeNL.alphaS,fitRes_ThreeNL.betaS,fitRes_ThreeNL.gammaS,...
+            fitRes_ThreeNL.alphaShared,fitRes_ThreeNL.betaShared,fitRes_ThreeNL.gammaShared,...
+            fitRes_ThreeNL.epsilon);
+        ss_resid_ThreeNL = sum((predictedResponse_threeNL-testingData.csMeasured).^2);
+        rSquaredValues.threeNL(pp) = 1-ss_resid_ThreeNL/ss_total;
 
     end
     
