@@ -7,6 +7,8 @@ function doCSLNAnalysis(node,varargin)
     addParameter(ip,'convertToConductance',true,@islogical);
     addParameter(ip,'fitWithEquallyPopulatedBins',true,@islogical);
     
+    figDir = '~/Documents/MATLAB/RFSurround/resources/TempFigs/'; %for saved eps figs
+    
     ip.parse(node,varargin{:});
     node = ip.Results.node;
     bins2D = ip.Results.bins2D;
@@ -46,11 +48,18 @@ function doCSLNAnalysis(node,varargin)
     set(get(fig4,'YLabel'),'String','Measured (nS)')
     set(gcf, 'WindowStyle', 'docked')
     
-    figure; clf; fig5=gca; %population R-squared results
+    figure; clf; fig5=gca; %population R-squared results. Shared vs indep
     set(fig5,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig5,'XLabel'),'String','R^2 independent nonlinearities')
     set(get(fig5,'YLabel'),'String','R^2 shared nonlinearity')
+    set(gcf, 'WindowStyle', 'docked')
+    
+    figure; clf; fig10=gca; %population R-squared results. Shared vs ThreeNL
+    set(fig10,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig10,'XLabel'),'String','R^2 Three nonlinearities')
+    set(get(fig10,'YLabel'),'String','R^2 shared nonlinearity')
     set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig6=gca; %slice of center, modulate surround
@@ -67,21 +76,23 @@ function doCSLNAnalysis(node,varargin)
     set(get(fig7,'YLabel'),'String','Response (nS)')
     set(gcf, 'WindowStyle', 'docked')
     
-    figure; clf; fig8=gca; %center +/- surround overlay
+
+    
+%     figure; clf; fig9=gca; %surround +/- center overlay
+%     set(fig9,'XScale','linear','YScale','linear')
+%     set(0, 'DefaultAxesFontSize', 12)
+%     set(get(fig9,'XLabel'),'String','Surround +/- center')
+%     set(get(fig9,'YLabel'),'String','Response (nS)')
+%     set(gcf, 'WindowStyle', 'docked')
+    
+    % Individual traces for example cell:
+    figure; clf; fig8=gca; %Eg trace of R(C+S) and [R(C) + R(S)] overlay
     set(fig8,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig8,'XLabel'),'String','Center +/- surround')
+    set(get(fig8,'XLabel'),'String','Time (s)')
     set(get(fig8,'YLabel'),'String','Response (nS)')
     set(gcf, 'WindowStyle', 'docked')
     
-    figure; clf; fig9=gca; %surround +/- center overlay
-    set(fig9,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig9,'XLabel'),'String','Surround +/- center')
-    set(get(fig9,'YLabel'),'String','Response (nS)')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    % Individual traces for example cell:
     figure; clf; fig11=gca; %center stim
     set(fig11,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
@@ -148,6 +159,8 @@ function doCSLNAnalysis(node,varargin)
         end
     end
     
+    diffHeatMaps = [];
+    
     filters.center = [];
     filters.surround = [];
     
@@ -195,69 +208,85 @@ function doCSLNAnalysis(node,varargin)
         filters.surround(pp,:) = surround.LinearFilter;
 
         if currentNode.custom.get('isExample')
-                addLineToAxis([center.filterTimeVector],[center.LinearFilter],...
-                    ['center',num2str(pp)],fig1,figColors(1,:),'-','none')
-                addLineToAxis([surround.filterTimeVector],[surround.LinearFilter],...
-                    ['surround',num2str(pp)],fig1,figColors(4,:),'-','none')
-                
-                addLineToAxis(center.nonlinearity.binMean,center.nonlinearity.respMean,...
-                    ['centerDataMean',num2str(pp)],fig2,figColors(1,:),'none','o')
-                addLineToAxis(center.nonlinearity.binMean,...
-                    center.nonlinearity.respMean + center.nonlinearity.respErr,...
-                    ['centerDataErrUp',num2str(pp)],fig2,figColors(1,:),'--','none')
-                addLineToAxis(center.nonlinearity.binMean,...
-                    center.nonlinearity.respMean - center.nonlinearity.respErr,...
-                    ['centerDataErrDown',num2str(pp)],fig2,figColors(1,:),'--','none')
-                addLineToAxis(center.nonlinearity.fitXX,center.nonlinearity.fitYY,...
-                    ['centerFit',num2str(pp)],fig2,figColors(1,:),'-','none')
-                
-                addLineToAxis(surround.nonlinearity.binMean,surround.nonlinearity.respMean,...
-                    ['surroundDataMean',num2str(pp)],fig2,figColors(4,:),'none','o')
-                addLineToAxis(surround.nonlinearity.binMean,...
-                    surround.nonlinearity.respMean + surround.nonlinearity.respErr,...
-                    ['surroundDataErrUp',num2str(pp)],fig2,figColors(4,:),'--','none')
-                addLineToAxis(surround.nonlinearity.binMean,...
-                    surround.nonlinearity.respMean - surround.nonlinearity.respErr,...
-                    ['surroundDataErrDown',num2str(pp)],fig2,figColors(4,:),'--','none')
-                addLineToAxis(surround.nonlinearity.fitXX,surround.nonlinearity.fitYY,...
-                    ['surroundFit',num2str(pp)],fig2,figColors(4,:),'-','none')
-                
-                
-                cEL = sortEpochList_time(currentNode.childBySplitValue('Center').epochList);
-                centerExampleEpoch = cEL.elements(egEpochToPull);
-                cSeed = centerExampleEpoch.protocolSettings('centerNoiseSeed');
-                centerEpochRes = getNoiseStimulusAndResponse(centerExampleEpoch,recType,'seedName','centerNoiseSeed');
-                addLineToAxis(centerEpochRes.wholeTrace.timeVector(1:length(centerEpochRes.wholeTrace.stimulus)),...
-                    centerEpochRes.wholeTrace.stimulus,...
-                    ['stim',num2str(pp)],fig11,figColors(1,:),'-','none')
-                addLineToAxis(centerEpochRes.wholeTrace.timeVector(1:length(centerEpochRes.wholeTrace.stimulus)),...
-                    centerEpochRes.wholeTrace.response(1:length(centerEpochRes.wholeTrace.stimulus)),...
-                    ['resp',num2str(pp)],fig13,figColors(1,:),'-','none')
-                
-                sEL = sortEpochList_time(currentNode.childBySplitValue('Surround').epochList);
-                surroundExampleEpoch = sEL.elements(egEpochToPull);
-                sSeed = surroundExampleEpoch.protocolSettings('surroundNoiseSeed');
-                surroundEpochRes = getNoiseStimulusAndResponse(surroundExampleEpoch,recType,'seedName','surroundNoiseSeed');
-                addLineToAxis(surroundEpochRes.wholeTrace.timeVector(1:length(surroundEpochRes.wholeTrace.stimulus)),...
-                    surroundEpochRes.wholeTrace.stimulus,...
-                    ['stim',num2str(pp)],fig12,figColors(4,:),'-','none')
-                addLineToAxis(surroundEpochRes.wholeTrace.timeVector(1:length(surroundEpochRes.wholeTrace.stimulus)),...
-                    surroundEpochRes.wholeTrace.response(1:length(surroundEpochRes.wholeTrace.stimulus)),...
-                    ['resp',num2str(pp)],fig14,figColors(4,:),'-','none')
-                
-                sEL = sortEpochList_time(currentNode.childBySplitValue('Center-Surround').epochList);
-                csExampleEpoch = sEL.elements(egEpochToPull);
-                cscSeed = csExampleEpoch.protocolSettings('centerNoiseSeed');
-                cssSeed = csExampleEpoch.protocolSettings('surroundNoiseSeed');
-                csEpochRes = getNoiseStimulusAndResponse(csExampleEpoch,recType,'seedName','centerNoiseSeed');
-                addLineToAxis(csEpochRes.wholeTrace.timeVector(1:length(csEpochRes.wholeTrace.stimulus)),...
-                    csEpochRes.wholeTrace.response(1:length(csEpochRes.wholeTrace.stimulus)),...
-                    ['resp',num2str(pp)],fig15,'k','-','none')
-                checkCenter = ~(cscSeed == cSeed);
-                checkSurround = ~(cssSeed == sSeed);
-                if or(checkCenter,checkSurround)
-                    warning('Example traces have different noise seeds')
-                end          
+            %Linear filters
+            addLineToAxis([center.filterTimeVector],[center.LinearFilter],...
+                ['center',num2str(pp)],fig1,figColors(1,:),'-','none')
+            addLineToAxis([surround.filterTimeVector],[surround.LinearFilter],...
+                ['surround',num2str(pp)],fig1,figColors(4,:),'-','none')
+            %Independently fit LN model nonlinearities (not CS model):
+            %   ...Center
+            addLineToAxis(center.nonlinearity.binMean,center.nonlinearity.respMean,...
+                ['centerDataMean',num2str(pp)],fig2,figColors(1,:),'none','o')
+            addLineToAxis(center.nonlinearity.binMean,...
+                center.nonlinearity.respMean + center.nonlinearity.respErr,...
+                ['centerDataErrUp',num2str(pp)],fig2,figColors(1,:),'--','none')
+            addLineToAxis(center.nonlinearity.binMean,...
+                center.nonlinearity.respMean - center.nonlinearity.respErr,...
+                ['centerDataErrDown',num2str(pp)],fig2,figColors(1,:),'--','none')
+            addLineToAxis(center.nonlinearity.fitXX,center.nonlinearity.fitYY,...
+                ['centerFit',num2str(pp)],fig2,figColors(1,:),'-','none')
+            %   ...Surround
+            addLineToAxis(surround.nonlinearity.binMean,surround.nonlinearity.respMean,...
+                ['surroundDataMean',num2str(pp)],fig2,figColors(4,:),'none','o')
+            addLineToAxis(surround.nonlinearity.binMean,...
+                surround.nonlinearity.respMean + surround.nonlinearity.respErr,...
+                ['surroundDataErrUp',num2str(pp)],fig2,figColors(4,:),'--','none')
+            addLineToAxis(surround.nonlinearity.binMean,...
+                surround.nonlinearity.respMean - surround.nonlinearity.respErr,...
+                ['surroundDataErrDown',num2str(pp)],fig2,figColors(4,:),'--','none')
+            addLineToAxis(surround.nonlinearity.fitXX,surround.nonlinearity.fitYY,...
+                ['surroundFit',num2str(pp)],fig2,figColors(4,:),'-','none')
+
+            % Example Traces:
+            %   ...Center stim and response
+            cEL = sortEpochList_time(currentNode.childBySplitValue('Center').epochList);
+            centerExampleEpoch = cEL.elements(egEpochToPull);
+            cSeed = centerExampleEpoch.protocolSettings('centerNoiseSeed');
+            centerEpochRes = getNoiseStimulusAndResponse(centerExampleEpoch,recType,'seedName','centerNoiseSeed');
+            addLineToAxis(centerEpochRes.wholeTrace.timeVector(1:length(centerEpochRes.wholeTrace.stimulus)),...
+                centerEpochRes.wholeTrace.stimulus,...
+                ['stim',num2str(pp)],fig11,figColors(1,:),'-','none')
+            addLineToAxis(centerEpochRes.wholeTrace.timeVector(1:length(centerEpochRes.wholeTrace.stimulus)),...
+                centerEpochRes.wholeTrace.response(1:length(centerEpochRes.wholeTrace.stimulus)),...
+                ['resp',num2str(pp)],fig13,figColors(1,:),'-','none')
+            %   ...Surround stim and response
+            sEL = sortEpochList_time(currentNode.childBySplitValue('Surround').epochList);
+            surroundExampleEpoch = sEL.elements(egEpochToPull);
+            sSeed = surroundExampleEpoch.protocolSettings('surroundNoiseSeed');
+            surroundEpochRes = getNoiseStimulusAndResponse(surroundExampleEpoch,recType,'seedName','surroundNoiseSeed');
+            addLineToAxis(surroundEpochRes.wholeTrace.timeVector(1:length(surroundEpochRes.wholeTrace.stimulus)),...
+                surroundEpochRes.wholeTrace.stimulus,...
+                ['stim',num2str(pp)],fig12,figColors(4,:),'-','none')
+            addLineToAxis(surroundEpochRes.wholeTrace.timeVector(1:length(surroundEpochRes.wholeTrace.stimulus)),...
+                surroundEpochRes.wholeTrace.response(1:length(surroundEpochRes.wholeTrace.stimulus)),...
+                ['resp',num2str(pp)],fig14,figColors(4,:),'-','none')
+            %   ...C + S response
+            csEL = sortEpochList_time(currentNode.childBySplitValue('Center-Surround').epochList);
+            csExampleEpoch = csEL.elements(egEpochToPull);
+            cscSeed = csExampleEpoch.protocolSettings('centerNoiseSeed');
+            cssSeed = csExampleEpoch.protocolSettings('surroundNoiseSeed');
+            csEpochRes = getNoiseStimulusAndResponse(csExampleEpoch,recType,'seedName','centerNoiseSeed');
+            addLineToAxis(csEpochRes.wholeTrace.timeVector(1:length(csEpochRes.wholeTrace.stimulus)),...
+                csEpochRes.wholeTrace.response(1:length(csEpochRes.wholeTrace.stimulus)),...
+                ['resp',num2str(pp)],fig15,'k','-','none')
+            
+            % Example Traces:
+            %   C + S and response vs linear sum.
+            %   i.e. R(C+S) overlay [R(C) + R(S)]
+            tempCStruct = getMeanResponseTrace(repeatedNode.childBySplitValue('Center').epochList,recType);
+            tempSStruct = getMeanResponseTrace(repeatedNode.childBySplitValue('Surround').epochList,recType);
+            tempLinSum = tempCStruct.mean + tempSStruct.mean;
+            
+            tempStruct = getMeanResponseTrace(repeatedNode.childBySplitValue('Center-Surround').epochList,recType);
+
+            addLineToAxis(tempStruct.timeVector,tempStruct.mean,'measuredResp',fig8,'k','-','none')
+            addLineToAxis(tempStruct.timeVector,tempLinSum,'linSum',fig8,[0.8 0.8 0.8],'-','none')
+ 
+            checkCenter = ~(cscSeed == cSeed);
+            checkSurround = ~(cssSeed == sSeed);
+            if or(checkCenter,checkSurround)
+                warning('Example traces have different noise seeds')
+            end          
         end
 
 % % % % % % % % MODEL FITTING % % % % % % % % % % % % % % % % % % % % % % % % % 
@@ -308,7 +337,7 @@ function doCSLNAnalysis(node,varargin)
             testingData.csMeasured = mean(responseMatrix);
             testingData.csMeasuredVariance = var(responseMatrix);
         end
-        
+
         %bin up and shape training data:
         if (fitWithEquallyPopulatedBins)
             %equally populated bins...
@@ -348,7 +377,7 @@ function doCSLNAnalysis(node,varargin)
             fitSurface = JointNLin_mvcn(CC(:)',SS(:)',fitRes_joint.alpha,fitRes_joint.mu,fitRes_joint.sigma,fitRes_joint.epsilon);
             fitSurface = reshape(fitSurface,length(ss),length(cc));
             
-            figure(20); clf; set(gcf, 'WindowStyle', 'docked')
+            figure(21); clf; set(gcf, 'WindowStyle', 'docked')
             subplot(221); hold on;
             stem3(centerGS,surroundGS,responseMean)
             surf(cc,ss,fitSurface)
@@ -376,7 +405,7 @@ function doCSLNAnalysis(node,varargin)
 
             fitSurface = reshape(fitSurface,length(ss),length(cc));
             
-            figure(20);
+            figure(21);
             subplot(222); hold off;
             stem3(centerGS,surroundGS,responseMean); hold on;
             surf(cc,ss,fitSurface)
@@ -406,6 +435,7 @@ function doCSLNAnalysis(node,varargin)
                 fitRes_shared.gamma,fitRes_shared.epsilon);
             fitSurface = reshape(fitSurface,length(ss),length(cc));
 
+            figure(21);
             subplot(223); hold off;
             stem3(centerGS,surroundGS,responseMean); hold on;
             surf(cc,ss,fitSurface)
@@ -444,7 +474,7 @@ function doCSLNAnalysis(node,varargin)
 
             fitSurface = reshape(fitSurface,length(ss),length(cc));
             
-            figure(20);
+            figure(21);
             subplot(224); hold off;
             stem3(centerGS,surroundGS,responseMean); hold on;
             surf(cc,ss,fitSurface)
@@ -467,6 +497,14 @@ function doCSLNAnalysis(node,varargin)
                     ['surround',num2str(pp)],fig17,figColors(4,:),'-','none')
                 addLineToAxis(xxCS,rOut,...
                     ['output',num2str(pp)],fig18,'k','-','none')
+                cZero = fitRes_ThreeNL.alphaC * ...
+                    normcdf(fitRes_ThreeNL.betaC * 0 + fitRes_ThreeNL.gammaC,0,1);
+                sZero = fitRes_ThreeNL.alphaS * ...
+                    normcdf(fitRes_ThreeNL.betaS.* 0 + fitRes_ThreeNL.gammaS,0,1);
+                baselineXlevel =  cZero + sZero;
+                addLineToAxis([baselineXlevel baselineXlevel],[0 max(rOut)],...
+                    ['baselineX',num2str(pp)],fig18,'k','--','none')
+                    
             end
 
             
@@ -480,17 +518,19 @@ function doCSLNAnalysis(node,varargin)
                 addLineToAxis(centerGS,responseMean(ii,:),...
                     ['surroundSlice',num2str(ii)],fig7,colors(ii,:),'-','none')
             end
-            % C +/- Surround and vice-versa slices
-            colors = pmkmp(length(centerGS));
-            for ii = 1:length(centerGS)
-                addLineToAxis(centerGS(ii) + surroundGS,responseMean(:,ii),...
-                    ['centerRef',num2str(ii)],fig8,colors(ii,:),'-','none')
-                
-                addLineToAxis(surroundGS(ii) + centerGS,responseMean(ii,:),...
-                    ['surroundRef',num2str(ii)],fig9,colors(ii,:),'-','none')
-            end
             
-            figure(21); clf; set(gcf, 'WindowStyle', 'docked')
+% %             % C +/- Surround and vice-versa slices
+% %             colors = pmkmp(length(centerGS));
+% %             for ii = 1:length(centerGS)
+% %                 addLineToAxis(centerGS(ii) + surroundGS,responseMean(:,ii),...
+% %                     ['centerRef',num2str(ii)],fig100,colors(ii,:),'-','none')
+% %                 
+% %                 addLineToAxis(surroundGS(ii) + centerGS,responseMean(ii,:),...
+% %                     ['surroundRef',num2str(ii)],fig101,colors(ii,:),'-','none')
+% %             end
+            
+            %3D response surface with highlighted slices
+            fh = figure(22); clf;
             h = surf(centerGS,surroundGS,responseMean);
             h.FaceAlpha = 0.4;
             h.EdgeAlpha = 0.5;
@@ -507,13 +547,15 @@ function doCSLNAnalysis(node,varargin)
                 responseMean(end,:),'Color',colors(end,:),...
                 'LineWidth',5,'Marker','none')
             view(-21,16)
+            set(fh,'Position',[1397         676         501         419])
+            drawnow;
+            figID = 'respSurf_highlightedSlices';
+            print(fh,[figDir,figID],'-depsc')
             
-            % Devation from linear summation
+            % Measured 2D response surface vs linear sum surface
             linearSumResponse = centerMean + surroundMean;
-            linearDeviationMatrix = responseMean - linearSumResponse;
-            figure(22); clf; set(gcf, 'WindowStyle', 'docked')
-            subplot(121);
-            hs1 = surf(centerGS,surroundGS,responseMean); 
+            fh = figure(23); clf;
+            surf(centerGS,surroundGS,responseMean); 
             colormap(hot); caxis([-2, 15]); freezeColors;
             xlabel('Center activation','FontSize',14);
             ylabel('Surround activation','FontSize',14);
@@ -524,17 +566,27 @@ function doCSLNAnalysis(node,varargin)
             hs2.FaceAlpha = 0.4;
             hs2.EdgeAlpha = 0.5;
             view(-21,16)
-            subplot(122);
-            hs3 = surf(centerGS,surroundGS,linearDeviationMatrix);
+            set(fh,'Position',[1397         676         501         419])
+            drawnow;
+            figID = 'respSurf_vsLinSum';
+            print(fh,[figDir,figID],'-depsc')
+            
+            % Devation from linear summation (heatmap)
+            fh = figure(24); clf;
+            linearDeviationMatrix = responseMean - linearSumResponse;
+            pcolor(centerGS,surroundGS,linearDeviationMatrix); shading flat;
+            colormap(hot); cb = colorbar; ylabel(cb,'R(C+S) - [R(C) + R(S)] (nS)');
             xlabel('Center activation','FontSize',14);
             ylabel('Surround activation','FontSize',14);
-            zlabel('Measured - Linear Sum (nS)','FontSize',14)
-            view(-21,16)
+            set(fh,'Position',[1397         676         501         419])
+            drawnow;
+            figID = 'heatMap_vsLinSum';
+            print(fh,[figDir,figID],'-depsc')
             
-            % 2D histogram of measured vs linear sum
+            % 2D histogram of measured vs linear sum (heatmap)
             linearSumResponse = trainingData.cMeasured + trainingData.sMeasured;
             measuredCSResponse = trainingData.csMeasured;
-            figure(21); clf; set(gcf, 'WindowStyle', 'docked');
+            fh = figure(25); clf;
             [N,Xedges,Yedges] = histcounts2(linearSumResponse,measuredCSResponse,100,...
                 'Normalization','probability');
             xCtrs = Xedges(1:end-1) + diff(Xedges);
@@ -544,61 +596,19 @@ function doCSLNAnalysis(node,varargin)
             hold on;
             plot([0 max(measuredCSResponse)],[0 max(measuredCSResponse)],'w--')
             xlabel('R(C) + R(S)'); ylabel('R(C + S)');
-            
- 
-            %natural image luminances in 2D space
-            load('~/Documents/MATLAB/turner-package/resources/SaccadeLuminanceTrajectoryStimuli_20160919.mat')
-            numberOfBins_em = 100^2;
-            centerGenSignal = [];
-            surroundGenSignal = [];
-            allCStim = [];
-            allSStim = [];
-            for ss = 1:length(luminanceData)
-                cStim = resample(luminanceData(ss).centerTrajectory,center.sampleRate,200);
-                cStim = (cStim) ./ luminanceData(ss).ImageMax; %stim as presented
+            set(fh,'Position',[1397         676         501         419])
+            drawnow;
+            figID = 'heatMap_diffHistogram';
+            print(fh,[figDir,figID],'-depsc')
 
-                %convert to contrast (relative to mean) for filter convolution
-                imMean = (luminanceData(ss).ImageMean  ./ luminanceData(ss).ImageMax);
-                cStim = (cStim - imMean) / imMean;
-                allCStim = cat(2,allCStim,cStim);
-
-                linearPrediction = conv(cStim,center.LinearFilter);
-                linearPrediction = linearPrediction(1:length(cStim));
-                centerGenSignal = cat(2,centerGenSignal,linearPrediction);
-
-                sStim = resample(luminanceData(ss).surroundTrajectory,surround.sampleRate,200);
-
-                sStim = (sStim) ./ luminanceData(ss).ImageMax; %stim as presented
-
-                %convert to contrast (relative to mean) for filter convolution
-                imMean = (luminanceData(ss).ImageMean  ./ luminanceData(ss).ImageMax);
-                sStim = (sStim - imMean) / imMean;
-                allSStim = cat(2,allSStim,sStim);
-
-                linearPrediction = conv(sStim,surround.LinearFilter);
-                linearPrediction = linearPrediction(1:length(sStim));
-                surroundGenSignal = cat(2,surroundGenSignal,linearPrediction);
-            end
-
-            figure; clf; fig19=gca; %2D stimulus space with eye movements
-            set(gcf, 'WindowStyle', 'docked')
-            set(fig19,'XScale','linear','YScale','linear')
-            set(0, 'DefaultAxesFontSize', 12)
-            set(get(fig19,'XLabel'),'String','Center gen. signal')
-            set(get(fig19,'YLabel'),'String','Surround gen. signal')
-            set(get(fig19,'YLabel'),'String','Probability')
-            [N,Xedges,Yedges] = histcounts2(centerGenSignal,surroundGenSignal,sqrt(numberOfBins_em),...
-                'Normalization','probability');
-            Ccenters = Xedges(1:end-1) + diff(Xedges);
-            Scenters = Yedges(1:end-1) + diff(Yedges);
-            surf(Ccenters,Scenters,log10(N))
-%             histogram2(centerGenSignal,surroundGenSignal,sqrt(numberOfBins_em),...
-%                 'Normalization','probability','ShowEmptyBins','on','FaceColor','flat');
-            colormap(hot)
-            xlabel('Center'); ylabel('Surround'); zlabel('Probability')
-            colorbar
-            
         end %example plotting of model-free additivity stuff
+        
+        % save out all cell diff heat maps:
+        
+        % 2D histogram of measured vs linear sum (heatmap)
+        linearSumResponse = centerMean + surroundMean;
+        linearDeviationMatrix = responseMean - linearSumResponse;
+        diffHeatMaps(:,:,pp) = linearDeviationMatrix; %#ok<AGROW>
 
 % % % % % % % % PREDICTIONS % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
         ss_total = sum((testingData.csMeasured-mean(testingData.csMeasured)).^2);
@@ -639,6 +649,13 @@ function doCSLNAnalysis(node,varargin)
         'unity',fig5,'k','--','none')
     disp(rSquaredValues);
     
+    addLineToAxis(rSquaredValues.threeNL(ONcellInds),rSquaredValues.shared(ONcellInds),...
+        'ONr2',fig10,'b','none','o')
+    addLineToAxis(rSquaredValues.threeNL(OFFcellInds),rSquaredValues.shared(OFFcellInds),...
+        'OFFr2',fig10,'r','none','o')
+    addLineToAxis([0 1],[0 1],...
+        'unity',fig10,'k','--','none')
+    
     relativeImprovement = rSquaredValues.shared ./ rSquaredValues.indep;
     surroundWts = trapz(abs(filters.surround),2);
     centerWts = trapz(abs(filters.center),2);
@@ -653,6 +670,8 @@ function doCSLNAnalysis(node,varargin)
     
     [rho, pval] = corr(relativeSurroundWeight,relativeImprovement');
     disp([rho, pval])
+    
+    save([figDir, 'diffHeatMaps.mat'],'diffHeatMaps','ONcellInds','OFFcellInds');
     
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
     if (exportFigs)
@@ -677,11 +696,14 @@ function doCSLNAnalysis(node,varargin)
         figID = ['CSLNslice_S_',recID];
         makeAxisStruct(fig7,figID ,'RFSurroundFigs')
 
-    %     figID = ['CSLNcs_',cellInfo.cellType,'_',recID];
-    %     makeAxisStruct(fig8,figID ,'RFSurroundFigs')
+        figID = ['CSLNlinSumTrace_','_',recID];
+        makeAxisStruct(fig8,figID ,'RFSurroundFigs')
     % 
     %     figID = ['CSLNsc_',cellInfo.cellType,'_',recID];
     %     makeAxisStruct(fig9,figID ,'RFSurroundFigs')
+    
+        figID = ['CSLNpopR2_3NL_',recID];
+        makeAxisStruct(fig10,figID ,'RFSurroundFigs')
 
         figID = ['Cstim_',recID];
         makeAxisStruct(fig11,figID ,'RFSurroundFigs')
@@ -700,5 +722,11 @@ function doCSLNAnalysis(node,varargin)
         
         figID = ['CSLNpopImprove_',recID];
         makeAxisStruct(fig16,figID ,'RFSurroundFigs')
+        
+        figID = ['CSLN_3NLcs',recID];
+        makeAxisStruct(fig17,figID ,'RFSurroundFigs')
+        
+        figID = ['CSLN_3NLshared',recID];
+        makeAxisStruct(fig18,figID ,'RFSurroundFigs')
     end
 end
