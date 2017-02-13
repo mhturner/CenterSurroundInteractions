@@ -70,6 +70,60 @@ function doCSAdditivityAnalysis(node,varargin)
         
 % % % % % % % % .....................WORK STOPPED HERE.............................. % % % % % % % % % % % % % % % %
         
+%PORTED OVER THIS CODE FROM doCSLNAnalysis. Seems like it belongs here more
+%natural image luminances in 2D space
+% %             load('~/Documents/MATLAB/turner-package/resources/SaccadeLuminanceTrajectoryStimuli_20160919.mat')
+% %             numberOfBins_em = 100^2;
+% %             centerGenSignal = [];
+% %             surroundGenSignal = [];
+% %             allCStim = [];
+% %             allSStim = [];
+% %             for ss = 1:length(luminanceData)
+% %                 cStim = resample(luminanceData(ss).centerTrajectory,center.sampleRate,200);
+% %                 cStim = (cStim) ./ luminanceData(ss).ImageMax; %stim as presented
+% % 
+% %                 %convert to contrast (relative to mean) for filter convolution
+% %                 imMean = (luminanceData(ss).ImageMean  ./ luminanceData(ss).ImageMax);
+% %                 cStim = (cStim - imMean) / imMean;
+% %                 allCStim = cat(2,allCStim,cStim);
+% % 
+% %                 linearPrediction = conv(cStim,center.LinearFilter);
+% %                 linearPrediction = linearPrediction(1:length(cStim));
+% %                 centerGenSignal = cat(2,centerGenSignal,linearPrediction);
+% % 
+% %                 sStim = resample(luminanceData(ss).surroundTrajectory,surround.sampleRate,200);
+% % 
+% %                 sStim = (sStim) ./ luminanceData(ss).ImageMax; %stim as presented
+% % 
+% %                 %convert to contrast (relative to mean) for filter convolution
+% %                 imMean = (luminanceData(ss).ImageMean  ./ luminanceData(ss).ImageMax);
+% %                 sStim = (sStim - imMean) / imMean;
+% %                 allSStim = cat(2,allSStim,sStim);
+% % 
+% %                 linearPrediction = conv(sStim,surround.LinearFilter);
+% %                 linearPrediction = linearPrediction(1:length(sStim));
+% %                 surroundGenSignal = cat(2,surroundGenSignal,linearPrediction);
+% %             end
+% % 
+% %             figure; clf; fig19=gca; %2D stimulus space with eye movements
+% %             set(gcf, 'WindowStyle', 'docked')
+% %             set(fig19,'XScale','linear','YScale','linear')
+% %             set(0, 'DefaultAxesFontSize', 12)
+% %             set(get(fig19,'XLabel'),'String','Center gen. signal')
+% %             set(get(fig19,'YLabel'),'String','Surround gen. signal')
+% %             set(get(fig19,'YLabel'),'String','Probability')
+% %             [N,Xedges,Yedges] = histcounts2(centerGenSignal,surroundGenSignal,sqrt(numberOfBins_em),...
+% %                 'Normalization','probability');
+% %             Ccenters = Xedges(1:end-1) + diff(Xedges);
+% %             Scenters = Yedges(1:end-1) + diff(Yedges);
+% %             surf(Ccenters,Scenters,log10(N))
+% % %             histogram2(centerGenSignal,surroundGenSignal,sqrt(numberOfBins_em),...
+% % %                 'Normalization','probability','ShowEmptyBins','on','FaceColor','flat');
+% %             colormap(hot)
+% %             xlabel('Center'); ylabel('Surround'); zlabel('Probability')
+% %             colorbar
+
+
         
 % % % % % % % % GET GENERATOR SIGNALS AND COMBINED RESPONSES % % % % % % % % % % % % % % % %
 
