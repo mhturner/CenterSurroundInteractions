@@ -79,6 +79,36 @@ doCSLNAnalysis(parentNode,...
     'convertToConductance',true,...
     'fitWithEquallyPopulatedBins',true);
 
+%% CS NATURAL IMAGE LUMINANCE: tree
+list = loader.loadEpochList([dataFolder,'CSNaturalImageLuminance.mat'],dataFolder);
+
+cellTypeSplit = @(list)splitOnCellType(list);
+cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+protocolSplit = @(list)splitOnShortProtocolID(list);
+protocolSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, protocolSplit);
+
+tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    recordingSplit_java,...
+    protocolSplit_java,...
+    'protocolSettings(imageIndex)',...
+    'protocolSettings(shuffleCenterSurround)',...
+    'protocolSettings(currentStimulus)'});
+gui = epochTreeGUI(tree);
+
+%% CS NATURAL IMAGE LUMINANCE: analysis & figures
+% flag recType nodes in population, example nodes are at imageIndex (under
+%           CSNaturalImageLuminance node)
+% select tree node (does ON & OFF in pop analysis together)
+clc; CloseAllFiguresExceptGUI();
+parentNode = gui.getSelectedEpochTreeNodes{1};  
+doCSNaturalImageLuminanceAnalysis(parentNode,...
+    'exportFigs',false,...
+    'convertToConductance',true);
+
 %% CENTER SURROUND ADDITIVITY: tree
  % Halfway done. use this for additivity analysis of csCorrelatedNoise and
  % NatImageCSLuminance data
