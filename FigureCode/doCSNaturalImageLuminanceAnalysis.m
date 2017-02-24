@@ -164,13 +164,22 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                 fixationCount = fixationCount + 1;
                 tempStart = (ff-1)*fixationDuration + startPoint + 1;
                 tempEnd = ff*fixationDuration + startPoint;
-                fixationResponses(1,fixationCount) = trapz(controlCenter.mean(tempStart:tempEnd)) / sampleRate; %nS*s
-                fixationResponses(2,fixationCount) = trapz(controlSurround.mean(tempStart:tempEnd)) / sampleRate;
-                fixationResponses(3,fixationCount) = trapz(controlCenterSurround.mean(tempStart:tempEnd)) / sampleRate;
+                fixationResponses(1,fixationCount) = max(controlCenter.mean(tempStart:tempEnd)); %nS
+                fixationResponses(2,fixationCount) = max(controlSurround.mean(tempStart:tempEnd));
+                fixationResponses(3,fixationCount) = max(controlCenterSurround.mean(tempStart:tempEnd));
                 
-                fixationResponses(4,fixationCount) = trapz(shuffleCenter.mean(tempStart:tempEnd)) / sampleRate;
-                fixationResponses(5,fixationCount) = trapz(shuffleSurround.mean(tempStart:tempEnd)) / sampleRate;
-                fixationResponses(6,fixationCount) = trapz(shuffleCenterSurround.mean(tempStart:tempEnd)) / sampleRate;
+                fixationResponses(4,fixationCount) = max(shuffleCenter.mean(tempStart:tempEnd));
+                fixationResponses(5,fixationCount) = max(shuffleSurround.mean(tempStart:tempEnd));
+                fixationResponses(6,fixationCount) = max(shuffleCenterSurround.mean(tempStart:tempEnd));
+                
+                
+% %                 fixationResponses(1,fixationCount) = trapz(controlCenter.mean(tempStart:tempEnd)) / sampleRate; %nS*s
+% %                 fixationResponses(2,fixationCount) = trapz(controlSurround.mean(tempStart:tempEnd)) / sampleRate;
+% %                 fixationResponses(3,fixationCount) = trapz(controlCenterSurround.mean(tempStart:tempEnd)) / sampleRate;
+% %                 
+% %                 fixationResponses(4,fixationCount) = trapz(shuffleCenter.mean(tempStart:tempEnd)) / sampleRate;
+% %                 fixationResponses(5,fixationCount) = trapz(shuffleSurround.mean(tempStart:tempEnd)) / sampleRate;
+% %                 fixationResponses(6,fixationCount) = trapz(shuffleCenterSurround.mean(tempStart:tempEnd)) / sampleRate;
             end
 
             if currentNode.custom.get('isExample')
@@ -209,7 +218,7 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                     'measuredCS',fig5,'k','-','none')
                 addLineToAxis(0,0,cellInfo.cellID,fig5,'k','none','none')
                 
-                % scatter plot with charge transfer per fixation
+                % scatter plot with peak conductance per fixation
                 % just for this example image
                 egIndsToPull = (size(fixationResponses,2) - noFixations + 1):size(fixationResponses,2);
                 addLineToAxis(fixationResponses(3,egIndsToPull),...
@@ -312,8 +321,8 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
         'ONcells',fig7,'b','none','o')
     addLineToAxis(meanDiff.control(OFFcellInds),meanDiff.shuffle(OFFcellInds),...
         'OFFcells',fig7,'r','none','o')
-    downLim = min([meanDiff.control, meanDiff.shuffle]);
-    upLim = max([meanDiff.control, meanDiff.shuffle]);
+    downLim = min([meanDiff.control, meanDiff.shuffle, 0]);
+    upLim = 1.1*max([meanDiff.control, meanDiff.shuffle]);
     addLineToAxis([downLim upLim],[downLim upLim],'unity',fig7,'k','--','none')
     
     
