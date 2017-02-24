@@ -8,36 +8,6 @@ import auimodel.*
 import vuidocument.*
 cd('~/Documents/MATLAB/RFSurround/')
 
-%% CONTRAST RESPONSE SPOTS: tree
-
-list = loader.loadEpochList([dataFolder,'ContrastResponseSpots.mat'],dataFolder);
-recordingSplit = @(list)splitOnRecKeyword(list);
-recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
-
-cellTypeSplit = @(list)splitOnCellType(list);
-cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
-
-tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
-    recordingSplit_java,...
-    'protocolSettings(maskDiameter)',...
-    'protocolSettings(spotDiameter)',...
-    'protocolSettings(currentSpotContrast)'});
-gui = epochTreeGUI(tree);
-
-%% CONTRAST RESPONSE SPOTS: flag population and set example(s)
-%   Select cell type as parentNode
-%       Flag spotDiameter node of cells in population    
-
-% save flagged and example-d tree nodes for the future
-saveFileID = 'CRF_HorizontalCell';
-getFlaggedAndExampleNodes(tree, saveFileDirectory, saveFileID);
-%% CONTRAST RESPONSE SPOTS: do analysis & make figs
-%       Select cell type as parentNode
-clc;
-parentNode = gui.getSelectedEpochTreeNodes{1};
-doContrastResponseAnalysis(parentNode,'metric','peak',...
-    'contrastPolarity',-1);
-
 %% CENTER SURROUND NOISE: tree
 
 list = loader.loadEpochList([dataFolder,'CenterSurroundNoise.mat'],dataFolder);
@@ -106,18 +76,18 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};  
 doCSNaturalImageLuminanceAnalysis(parentNode,...
-    'exportFigs',false,...
+    'exportFigs',true,...
     'convertToConductance',true);
 
-%% CENTER SURROUND ADDITIVITY: tree
- % Halfway done. use this for additivity analysis of csCorrelatedNoise and
- % NatImageCSLuminance data
-list = loader.loadEpochList([dataFolder,'CenterSurroundNoise.mat'],dataFolder);
-recordingSplit = @(list)splitOnRecKeyword(list);
-recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+%% CORRELATED CS NOISE: tree
+list = loader.loadEpochList([dataFolder,'CorrelatedCSNoise.mat'],dataFolder);
 
 cellTypeSplit = @(list)splitOnCellType(list);
 cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
 
 protocolSplit = @(list)splitOnShortProtocolID(list);
 protocolSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, protocolSplit);
@@ -125,168 +95,110 @@ protocolSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, pr
 tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
     recordingSplit_java,...
     protocolSplit_java,...
-    'protocolSettings(useRandomSeed)',...
+    'protocolSettings(csCorrelation)',...
     'protocolSettings(currentStimulus)'});
+gui = epochTreeGUI(tree);
 
-%check that some parameters are consistent within recordings...
-constantSettings = {'centerOffset','backgroundIntensity','preTime',...
-    'tailTime','frameDwell','annulusInnerDiameter',...
-    'centerDiameter','annulusOuterDiameter','noiseStdv'};
-for cellTypeIndex = 1:tree.children.length
-    for cellNameIndex = 1:tree.children(cellTypeIndex).children.length
-        for recTypeIndex = 1:tree.children(cellTypeIndex).children(cellNameIndex).length
-            newEL = tree.children(cellTypeIndex).children(cellNameIndex).children(recTypeIndex).epochList;
-            [outEpochList, outParams] = makeUniformEpochList(newEL,constantSettings,[]);
-        end
-    end
-end
+%% CORRELATED CS NOISE: analysis & figures
+% flag recType nodes in population, example nodes are at CorrelatedCSNoise
+%       node
+% select tree node (does ON & OFF in pop analysis together)
+clc; CloseAllFiguresExceptGUI();
+parentNode = gui.getSelectedEpochTreeNodes{1};  
+doCorrelatedCSNoiseAnalysis(parentNode,...
+    'exportFigs',true,...
+    'convertToConductance',true);
+
+%% LINEAR EQUIVALENT DISC MOD SURROUND: tree
+list = loader.loadEpochList([dataFolder,'LinearEquivalentDiscModSurround.mat'],dataFolder);
+
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+cellTypeSplit = @(list)splitOnCellType(list);
+cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+locationSplit = @(list)splitOnJavaArrayList(list,'currentPatchLocation');
+locationSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, locationSplit);
+
+tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    recordingSplit_java,...
+    'protocolSettings(imageName)',...
+    locationSplit_java,...
+    'protocolSettings(currentSurroundContrast)',...
+    'protocolSettings(stimulusTag)'});
 
 gui = epochTreeGUI(tree);
 
-%% CENTER SURROUND ADDITIVITY: CS additivity analysis
- % Halfway done. use this for additivity analysis of csCorrelatedNoise and
- % NatImageCSLuminance data
+%% LINEAR EQUIVALENT DISC MOD SURROUND: analysis
+% flag recType nodes, set patch location as examples
+% select cell type as parentNode
+
+clc; CloseAllFiguresExceptGUI();
+parentNode = gui.getSelectedEpochTreeNodes{1};
+doLEDModSurroundAnalysis(parentNode,...
+    'metric','integrated','figureID','OFFexc');
+
+% ,'figureID','OFFspk'
+
+%% FLASHED GRATING MOD SURROUND: tree
+list = loader.loadEpochList([dataFolder,'FlashedGratingModSurround.mat'],dataFolder);
+
+cellTypeSplit = @(list)splitOnCellType(list);
+cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+protocolSplit = @(list)splitOnShortProtocolID(list);
+protocolSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, protocolSplit);
 
 
-% flag and example recType nodes in population
-% select cell type node
-% Uses CenterSurroundNoise, useRandomSeed = 1 to get filters.
+tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    recordingSplit_java,...
+    'protocolSettings(gratingContrast)',...
+    'protocolSettings(currentSurroundContrast)',...
+    'protocolSettings(stimulusTag)'});
+
+gui = epochTreeGUI(tree);
+
+%% FLASHED GRATING MOD SURROUND: analysis & figs
+% flag recType nodes, set grating contrast as examples
+% select cell type as parentNode
+clc; CloseAllFiguresExceptGUI();
+parentNode = gui.getSelectedEpochTreeNodes{1};
+doFlashedGratingModSurroundAnalysis(parentNode,...
+    'metric','integrated','exportFigs',true);
+
+%% CONTRAST RESPONSE SPOTS: tree
+
+list = loader.loadEpochList([dataFolder,'ContrastResponseSpots.mat'],dataFolder);
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+cellTypeSplit = @(list)splitOnCellType(list);
+cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    recordingSplit_java,...
+    'protocolSettings(maskDiameter)',...
+    'protocolSettings(spotDiameter)',...
+    'protocolSettings(currentSpotContrast)'});
+gui = epochTreeGUI(tree);
+
+%% CONTRAST RESPONSE SPOTS: flag population and set example(s)
+%   Select cell type as parentNode
+%       Flag spotDiameter node of cells in population    
+
+% save flagged and example-d tree nodes for the future
+saveFileID = 'CRF_HorizontalCell';
+getFlaggedAndExampleNodes(tree, saveFileDirectory, saveFileID);
+%% CONTRAST RESPONSE SPOTS: do analysis & make figs
+%       Select cell type as parentNode
 clc;
 parentNode = gui.getSelectedEpochTreeNodes{1};
-doCSAdditivityAnalysis(parentNode,...
-    'bins2D',15^2,...
-    'exportFigs',false,...
-    'convertToConductance',true,...
-    'protocolID',''); %'', 
-
-
-%% all data: model-free, where are failures of additivity?
-numberOfBins = 8^2;
-
-measuredResponse = centerSurround.measuredResponse;
-
-centerAloneResponse = center.measuredResponse;
-surroundAloneResponse = surround.measuredResponse;
-linearSummedResponse = centerAloneResponse + surroundAloneResponse;
-
-err = measuredResponse - linearSummedResponse;
-
-%bin up and shape data:
-[~,centerGS,~,centerBinID] = ...
-    histcounts_equallyPopulatedBins(center.generatorSignal,sqrt(numberOfBins));
-[~,surroundGS,~,surroundBinID] = ...
-    histcounts_equallyPopulatedBins(surround.generatorSignal,sqrt(numberOfBins));
-errorMatrix = zeros(sqrt(numberOfBins));
-for xx = 1:sqrt(numberOfBins)
-    for yy = 1:sqrt(numberOfBins)
-        jointInds = intersect(find(centerBinID == xx),find(surroundBinID == yy));
-        errorMatrix(yy,xx) = mean(err(jointInds));
-    end
-end
-
-figure(5); clf;
-subplot(321)
-plot(center.filterTimeVector,center.LinearFilter,'b')
-hold on; plot([0 0.8],[0 0],'k:')
-xlabel('Time (s)'); title('Center')
-xlim([0 0.6]); ylim([min(center.LinearFilter) max(center.LinearFilter)])
-
-subplot(322)
-plot(surround.filterTimeVector,surround.LinearFilter,'r')
-hold on; plot([0 0.8],[0 0],'k:')
-xlabel('Time (s)'); title('Surround')
-xlim([0 0.6]); ylim([min(surround.LinearFilter) max(surround.LinearFilter)])
-
-
-subplot(3,2,3:6)
-surfc(centerGS,surroundGS,errorMatrix);
-% axis square; view(-16,22)
-axis square; view(164,32)
-xlabel('Center gen. signal'); ylabel('Surround gen. signal');
-zlabel('Measured - Linear sum');
-
-
-%% look at errors of additivity for different models:
-%SHARED NLINEARITY:
-cc = linspace(min(centerGS),max(centerGS),sqrt(numberOfBins));
-ss = linspace(min(surroundGS),max(surroundGS),sqrt(numberOfBins));
-[CC,SS] = meshgrid(cc',ss');
-
-resp_CenterOnly = CSModel_SharedNL(CC(:)',zeros(1,length(CC(:))),...
-    fitRes_shared.a,fitRes_shared.alpha,fitRes_shared.beta,...
-    fitRes_shared.gamma,fitRes_shared.epsilon);
-
-resp_SurroundOnly = CSModel_SharedNL(zeros(1,length(CC(:))),SS(:)',...
-    fitRes_shared.a,fitRes_shared.alpha,fitRes_shared.beta,...
-    fitRes_shared.gamma,fitRes_shared.epsilon);
-
-resp_CenterSurround = CSModel_SharedNL(CC(:)',SS(:)',...
-    fitRes_shared.a,fitRes_shared.alpha,fitRes_shared.beta,...
-    fitRes_shared.gamma,fitRes_shared.epsilon);
-
-linearSummedResponse = resp_CenterOnly + resp_SurroundOnly;
-
-err = resp_CenterSurround - linearSummedResponse;
-errorMatrix = reshape(err,sqrt(numberOfBins),sqrt(numberOfBins));
-
-figure(6); clf;
-subplot(321)
-plot(center.filterTimeVector,center.LinearFilter,'b')
-hold on; plot([0 0.8],[0 0],'k:')
-xlabel('Time (s)'); title('Center')
-xlim([0 0.6]); ylim([min(center.LinearFilter) max(center.LinearFilter)])
-
-subplot(322)
-plot(surround.filterTimeVector,surround.LinearFilter,'r')
-hold on; plot([0 0.8],[0 0],'k:')
-xlabel('Time (s)'); title('Surround')
-xlim([0 0.6]); ylim([min(surround.LinearFilter) max(surround.LinearFilter)])
-
-subplot(3,2,3:6)
-title('Shared model')
-surfc(centerGS,surroundGS,errorMatrix);
-% axis square; view(-16,22)
-axis square; view(164,32)
-xlabel('Center gen. signal'); ylabel('Surround gen. signal');
-zlabel('Measured - Linear sum');
-
-%JOINT NLINEARITY:
-cc = linspace(min(centerGS),max(centerGS),sqrt(numberOfBins));
-ss = linspace(min(surroundGS),max(surroundGS),sqrt(numberOfBins));
-[CC,SS] = meshgrid(cc',ss');
-
-
-resp_CenterOnly = JointNLin_mvcn(CC(:)',zeros(1,length(CC(:))),fitRes_joint.alpha,fitRes_joint.mu,fitRes_joint.sigma,fitRes_joint.epsilon);
-
-resp_SurroundOnly = JointNLin_mvcn(zeros(1,length(SS(:))),SS(:)',fitRes_joint.alpha,fitRes_joint.mu,fitRes_joint.sigma,fitRes_joint.epsilon);
-
-resp_CenterSurround = JointNLin_mvcn(CC(:)',SS(:)',fitRes_joint.alpha,fitRes_joint.mu,fitRes_joint.sigma,fitRes_joint.epsilon);
-
-linearSummedResponse = resp_CenterOnly + resp_SurroundOnly;
-
-err = resp_CenterSurround - linearSummedResponse;
-errorMatrix = reshape(err,sqrt(numberOfBins),sqrt(numberOfBins));
-
-figure(7); clf;
-subplot(321)
-plot(center.filterTimeVector,center.LinearFilter,'b')
-hold on; plot([0 0.8],[0 0],'k:')
-xlabel('Time (s)'); title('Center')
-xlim([0 0.6]); ylim([min(center.LinearFilter) max(center.LinearFilter)])
-
-subplot(322)
-title('Indep model')
-plot(surround.filterTimeVector,surround.LinearFilter,'r')
-hold on; plot([0 0.8],[0 0],'k:')
-xlabel('Time (s)'); title('Surround')
-xlim([0 0.6]); ylim([min(surround.LinearFilter) max(surround.LinearFilter)])
-
-subplot(3,2,3:6)
-surfc(centerGS,surroundGS,errorMatrix);
-% axis square; view(-16,22)
-axis square; view(164,32)
-xlabel('Center gen. signal'); ylabel('Surround gen. signal');
-zlabel('Measured - Linear sum');
+doContrastResponseAnalysis(parentNode,'metric','peak',...
+    'contrastPolarity',-1);
 
 
 %% CS eye movement luminance
@@ -814,35 +726,5 @@ plot(timeVec,F1prediction,'b')
 plot(timeVec,F2prediction,'r')
 plot(timeVec,stepPrediction,'k')
 
-%% LINEAR EQUIVALENT DISC MOD SURROUND: tree
-list = loader.loadEpochList([dataFolder,'LinearEquivalentDiscModSurround.mat'],dataFolder);
-
-recordingSplit = @(list)splitOnRecKeyword(list);
-recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
-
-cellTypeSplit = @(list)splitOnCellType(list);
-cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
-
-locationSplit = @(list)splitOnJavaArrayList(list,'currentPatchLocation');
-locationSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, locationSplit);
-
-tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
-    recordingSplit_java,...
-    'protocolSettings(imageName)',...
-    locationSplit_java,...
-    'protocolSettings(currentSurroundContrast)',...
-    'protocolSettings(stimulusTag)'});
-
-gui = epochTreeGUI(tree);
-
-%% flag recType nodes, set patch location as examples
-% select cell type as parentNode
-
-clc;
-parentNode = gui.getSelectedEpochTreeNodes{1};
-doLEDModSurroundAnalysis(parentNode,...
-    'metric','integrated','figureID','OFFexc');
-
-% ,'figureID','OFFspk'
 
 
