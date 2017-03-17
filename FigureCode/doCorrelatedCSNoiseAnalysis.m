@@ -13,12 +13,12 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
     
     figColors = pmkmp(8);
 
-    figure; clf; fig1=gca; %eg Linear filters
-    set(fig1,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig1,'XLabel'),'String','Time (s)')
-    set(get(fig1,'YLabel'),'String','')
-    set(gcf, 'WindowStyle', 'docked')
+% %     figure; clf; fig1=gca; %eg Linear filters
+% %     set(fig1,'XScale','linear','YScale','linear')
+% %     set(0, 'DefaultAxesFontSize', 12)
+% %     set(get(fig1,'XLabel'),'String','Time (s)')
+% %     set(get(fig1,'YLabel'),'String','')
+% %     set(gcf, 'WindowStyle', 'docked')
     
     figure; clf; fig2=gca; %eg Mean trace: CS and lin sum. Corr = -1
     set(fig2,'XScale','linear','YScale','linear')
@@ -119,23 +119,23 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
         end
         
         CorrelatedNoiseNode = populationNodes{pp}.childBySplitValue('CorrelatedCSNoise');
-        filterNoiseNode = populationNodes{pp}.childBySplitValue('CenterSurroundNoise').children(1);
+% %         filterNoiseNode = populationNodes{pp}.childBySplitValue('CenterSurroundNoise').children(1);
         
 % % % % % % % % GET LINEAR FILTERS % % % % % % % % % % % % % % % % 
-        % center:
-        center = getLinearFilterAndPrediction(filterNoiseNode.childBySplitValue('Center').epochList,recType,...
-            'seedName','centerNoiseSeed');
-        % surround:
-        surround = getLinearFilterAndPrediction(filterNoiseNode.childBySplitValue('Surround').epochList,recType,...
-            'seedName','surroundNoiseSeed');
+% %         % center:
+% %         center = getLinearFilterAndPrediction(filterNoiseNode.childBySplitValue('Center').epochList,recType,...
+% %             'seedName','centerNoiseSeed');
+% %         % surround:
+% %         surround = getLinearFilterAndPrediction(filterNoiseNode.childBySplitValue('Surround').epochList,recType,...
+% %             'seedName','surroundNoiseSeed');
         
         if CorrelatedNoiseNode.custom.get('isExample')
-            %filters:
-            addLineToAxis([center.filterTimeVector],[center.LinearFilter],...
-                'center',fig1,figColors(1,:),'-','none')
-            addLineToAxis([surround.filterTimeVector],[surround.LinearFilter],...
-                'surround',fig1,figColors(4,:),'-','none')
-            addLineToAxis(0,0,cellInfo.cellID,fig1,'k','none','none')
+% %             %filters:
+% %             addLineToAxis([center.filterTimeVector],[center.LinearFilter],...
+% %                 'center',fig1,figColors(1,:),'-','none')
+% %             addLineToAxis([surround.filterTimeVector],[surround.LinearFilter],...
+% %                 'surround',fig1,figColors(4,:),'-','none')
+% %             addLineToAxis(0,0,cellInfo.cellID,fig1,'k','none','none')
         end
         
 % % % % % % % % DO ADDITIVITY ANALYSIS % % % % % % % % % % % % % % % %
@@ -154,7 +154,13 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
             measuredResponse = centerSurroundResp.mean;
             linSum = centerResp.mean + surroundResp.mean;
             
-            meanLinearDeviation(correlationIndex) = mean(linSum - measuredResponse);
+            if strcmp(recType,'exc')
+                chargeMult = -1;
+            else
+                chargeMult = 1;
+            end
+
+            meanLinearDeviation(correlationIndex) = chargeMult * mean(linSum - measuredResponse);
             
             %reconstruct noise stimuli:
             backgroundIntensity = currentNode.epochList.firstValue.protocolSettings('backgroundIntensity');
@@ -203,8 +209,8 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
 
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
     if (exportFigs)
-        figID = ['CScorr_filters_',recID];
-        makeAxisStruct(fig1,figID ,'RFSurroundFigs')
+%         figID = ['CScorr_filters_',recID];
+%         makeAxisStruct(fig1,figID ,'RFSurroundFigs')
 
         figID = ['CScorr_respNeg_',recID];
         makeAxisStruct(fig2,figID ,'RFSurroundFigs')

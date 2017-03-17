@@ -2,24 +2,15 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     ip = inputParser;
     ip.addRequired('node',@(x)isa(x,'edu.washington.rieke.jauimodel.AuiEpochTree'));
     addParameter(ip,'exportFigs',true,@islogical);
-    addParameter(ip,'convertToConductance',true,@islogical);
     
     figDir = '~/Documents/MATLAB/RFSurround/resources/TempFigs/'; %for saved eps figs
     
     ip.parse(node,varargin{:});
     node = ip.Results.node;
     exportFigs = ip.Results.exportFigs;
-    convertToConductance = ip.Results.convertToConductance;
     
     figColors = pmkmp(8);
 
-    figure; clf; fig1=gca; %eg Linear filters
-    set(fig1,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig1,'XLabel'),'String','Time (s)')
-    set(get(fig1,'YLabel'),'String','')
-    set(gcf, 'WindowStyle', 'docked')
-    
     figure; clf; fig2=gca; %eg Mean trace: C, S, indep, no shuffle
     set(fig2,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
@@ -97,6 +88,14 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     set(get(fig12,'YLabel'),'String','Probability')
     set(gcf, 'WindowStyle', 'docked')
     
+    figure; clf; fig13=gca; %sparsity CS corr vs shuffled
+    set(fig13,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig13,'XLabel'),'String','Sparsity natural CS')
+    set(get(fig13,'YLabel'),'String','Sparsity shuffled CD')
+    set(gcf, 'WindowStyle', 'docked')
+    
+    
     populationNodes = {};
     ct = 0;
     for nn = 1:node.descendentsDepthFirst.length
@@ -109,14 +108,12 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
 
     meanDiff.shuffle = [];
     meanDiff.control = [];
+    sparsity = struct;
     ONcellInds = [];
     OFFcellInds = [];
     for pp = 1:length(populationNodes)
         cellInfo = getCellInfoFromEpochList(populationNodes{pp}.epochList);
         recType = getRecordingTypeFromEpochList(populationNodes{pp}.epochList);
-        if (convertToConductance)
-            recType = [recType, ', conductance']; %#ok<AGROW>
-        end
         if strcmp(cellInfo.cellType,'ONparasol')
             ONcellInds = cat(2,ONcellInds,pp);
         elseif strcmp(cellInfo.cellType,'OFFparasol')
@@ -124,19 +121,11 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
         end
         
         ImageLuminanceNode = populationNodes{pp}.childBySplitValue('CSNaturalImageLuminance');
-        filterNoiseNode = populationNodes{pp}.childBySplitValue('CenterSurroundNoise').children(1).children(1);
-        
-% % % % % % % % GET LINEAR FILTERS % % % % % % % % % % % % % % % % 
-        % center:
-        center = getLinearFilterAndPrediction(filterNoiseNode.childBySplitValue('Center').epochList,recType,...
-            'seedName','centerNoiseSeed');
-        % surround:
-        surround = getLinearFilterAndPrediction(filterNoiseNode.childBySplitValue('Surround').epochList,recType,...
-            'seedName','surroundNoiseSeed');
-        
+
 % % % % % % % % DO ADDITIVITY ANALYSIS % % % % % % % % % % % % % % % %
         fixationResponses = nan(6,1); %rows are controlCenter, controlSurround,...
         fixationCount = 0;
+        frameCount = 0;
         for imageIndex = 1:ImageLuminanceNode.children.length
             currentNode = ImageLuminanceNode.children(imageIndex);
             for ss = 1:2
@@ -146,50 +135,93 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                     shuffleCSNode = currentNode.children(ss);
                 end
             end
-            controlCenter = getMeanResponseTrace(controlCSNode.childBySplitValue('Center').epochList,recType);
-            controlSurround = getMeanResponseTrace(controlCSNode.childBySplitValue('Surround').epochList,recType);
-            controlCenterSurround = getMeanResponseTrace(controlCSNode.childBySplitValue('Center-Surround').epochList,recType);
             
-            shuffleCenter = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Center').epochList,recType);
-            shuffleSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Surround').epochList,recType);
-            shuffleCenterSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Center-Surround').epochList,recType);
-            
-            % get fixation responses for this image
+            %timing stuff:
+            timingEpoch = controlCSNode.childBySplitValue('Center').epochList.firstValue;
+            frameRate = timingEpoch.protocolSettings('background:Microdisplay Stage@localhost:monitorRefreshRate');
+            if isempty(frameRate)
+                frameRate = timingEpoch.protocolSettings('background:Microdisplay_Stage@localhost:monitorRefreshRate');
+            end
             sampleRate = currentNode.epochList.firstValue.protocolSettings('sampleRate');
+            preTime = (currentNode.epochList.firstValue.protocolSettings('preTime') / 1e3); %sec
+            stimTime = (currentNode.epochList.firstValue.protocolSettings('stimTime') / 1e3); %sec
             fixationDuration = (currentNode.epochList.firstValue.protocolSettings('fixationDuration') / 1e3) *sampleRate; %data points
-            startPoint = (currentNode.epochList.firstValue.protocolSettings('preTime') / 1e3) * sampleRate; %data points
             noFixations = currentNode.epochList.firstValue.protocolSettings('stimTime') / ...
                 currentNode.epochList.firstValue.protocolSettings('fixationDuration');
+            
+            FMdata = (riekesuite.getResponseVector(timingEpoch,'Frame Monitor'))';
+            [frameTimes, ~] = getFrameTiming(FMdata,0);
+            preFrames = frameRate*(preTime);
+            stimFrames = frameRate*(stimTime);
+            startPoint = frameTimes(preFrames);
+            
+            if strcmp(recType,'extracellular')
+                attachSpikeBinary = true;
+            else
+                attachSpikeBinary = false;
+            end
+
+            controlCenter = getMeanResponseTrace(controlCSNode.childBySplitValue('Center').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
+            controlSurround = getMeanResponseTrace(controlCSNode.childBySplitValue('Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
+            controlCenterSurround = getMeanResponseTrace(controlCSNode.childBySplitValue('Center-Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
+
+            shuffleCenter = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Center').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
+            shuffleSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
+            shuffleCenterSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Center-Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
+
+            
+            % get fixation responses for this image
             for ff = 1:noFixations
                 fixationCount = fixationCount + 1;
                 tempStart = (ff-1)*fixationDuration + startPoint + 1;
                 tempEnd = ff*fixationDuration + startPoint;
-                fixationResponses(1,fixationCount) = max(controlCenter.mean(tempStart:tempEnd)); %nS
-                fixationResponses(2,fixationCount) = max(controlSurround.mean(tempStart:tempEnd));
-                fixationResponses(3,fixationCount) = max(controlCenterSurround.mean(tempStart:tempEnd));
                 
-                fixationResponses(4,fixationCount) = max(shuffleCenter.mean(tempStart:tempEnd));
-                fixationResponses(5,fixationCount) = max(shuffleSurround.mean(tempStart:tempEnd));
-                fixationResponses(6,fixationCount) = max(shuffleCenterSurround.mean(tempStart:tempEnd));
-                
-                
-% %                 fixationResponses(1,fixationCount) = trapz(controlCenter.mean(tempStart:tempEnd)) / sampleRate; %nS*s
-% %                 fixationResponses(2,fixationCount) = trapz(controlSurround.mean(tempStart:tempEnd)) / sampleRate;
-% %                 fixationResponses(3,fixationCount) = trapz(controlCenterSurround.mean(tempStart:tempEnd)) / sampleRate;
-% %                 
-% %                 fixationResponses(4,fixationCount) = trapz(shuffleCenter.mean(tempStart:tempEnd)) / sampleRate;
-% %                 fixationResponses(5,fixationCount) = trapz(shuffleSurround.mean(tempStart:tempEnd)) / sampleRate;
-% %                 fixationResponses(6,fixationCount) = trapz(shuffleCenterSurround.mean(tempStart:tempEnd)) / sampleRate;
+                if strcmp(recType,'extracellular') %spikes: spike count
+                    %count spikes in each trial on this fixation. Mean
+                    %across trials:
+                    fixationResponses(1,fixationCount) = mean(sum(controlCenter.binary(:,tempStart:tempEnd),2),1);
+                    fixationResponses(2,fixationCount) = mean(sum(controlSurround.binary(:,tempStart:tempEnd),2),1); 
+                    fixationResponses(3,fixationCount) = mean(sum(controlCenterSurround.binary(:,tempStart:tempEnd),2),1); 
+                    
+                    fixationResponses(4,fixationCount) = mean(sum(shuffleCenter.binary(:,tempStart:tempEnd),2),1); 
+                    fixationResponses(5,fixationCount) = mean(sum(shuffleSurround.binary(:,tempStart:tempEnd),2),1); 
+                    fixationResponses(6,fixationCount) = mean(sum(shuffleCenterSurround.binary(:,tempStart:tempEnd),2),1); 
+                    
+                else %currents: charge transfer
+                    if strcmp(recType,'exc')
+                        chargeMult = -1;
+                    else
+                        chargeMult = 1;
+                    end
+                    fixationResponses(1,fixationCount) = chargeMult * trapz(controlCenter.mean(tempStart:tempEnd)) / sampleRate; %pC
+                    fixationResponses(2,fixationCount) = chargeMult * trapz(controlSurround.mean(tempStart:tempEnd)) / sampleRate;
+                    fixationResponses(3,fixationCount) = chargeMult * trapz(controlCenterSurround.mean(tempStart:tempEnd)) / sampleRate;
+
+                    fixationResponses(4,fixationCount) = chargeMult * trapz(shuffleCenter.mean(tempStart:tempEnd)) / sampleRate;
+                    fixationResponses(5,fixationCount) = chargeMult * trapz(shuffleSurround.mean(tempStart:tempEnd)) / sampleRate;
+                    fixationResponses(6,fixationCount) = chargeMult * trapz(shuffleCenterSurround.mean(tempStart:tempEnd)) / sampleRate;
+                end
             end
 
+            if strcmp(recType,'extracellular')
+                [frameTimes, ~] = getFrameTiming(FMdata,0);
+                frameTimes = frameTimes((preFrames + 1) : (preFrames + stimFrames + 1));
+                for ff = 1:(length(frameTimes)-1)
+                    frameCount = frameCount + 1;
+                    startPt = frameTimes(ff);
+                    endPt = frameTimes(ff+1);
+                    controlCenter.frameResp(frameCount) = sum(mean(controlCenter.binary(:,startPt:endPt),1)); %spikes
+                    controlSurround.frameResp(frameCount) = sum(mean(controlSurround.binary(:,startPt:endPt),1)); %spikes
+                    controlCenterSurround.frameResp(frameCount) = sum(mean(controlCenterSurround.binary(:,startPt:endPt),1)); %spikes
+
+                    shuffleCenter.frameResp(frameCount) = sum(mean(shuffleCenter.binary(:,startPt:endPt),1)); %spikes
+                    shuffleSurround.frameResp(frameCount) = sum(mean(shuffleSurround.binary(:,startPt:endPt),1)); %spikes
+                    shuffleCenterSurround.frameResp(frameCount) = sum(mean(shuffleCenterSurround.binary(:,startPt:endPt),1)); %spikes
+                end
+            end
+            
+
             if currentNode.custom.get('isExample')
-                %filters:
-                addLineToAxis([center.filterTimeVector],[center.LinearFilter],...
-                    'center',fig1,figColors(1,:),'-','none')
-                addLineToAxis([surround.filterTimeVector],[surround.LinearFilter],...
-                    'surround',fig1,figColors(4,:),'-','none')
-                addLineToAxis(0,0,cellInfo.cellID,fig1,'k','none','none')
-                
                 %control:
                 %   indep
                 addLineToAxis(controlCenter.timeVector,controlCenter.mean,...
@@ -313,6 +345,26 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                 
             end %eg cell plots
         end %for images
+        
+% %         [~, sparsity.controlCenter(pp)] = getActivityRatio(controlCenter.frameResp);
+% %         [~, sparsity.controlSurround(pp)] = getActivityRatio(controlSurround.frameResp);
+% %         [~, sparsity.controlCenterSurround(pp)] = getActivityRatio(controlCenterSurround.frameResp);
+% % 
+% %         [~, sparsity.shuffleCenter(pp)] = getActivityRatio(shuffleCenter.frameResp);
+% %         [~, sparsity.shuffleSurround(pp)] = getActivityRatio(shuffleSurround.frameResp);
+% %         [~, sparsity.shuffleCenterSurround(pp)] = getActivityRatio(shuffleCenterSurround.frameResp);
+        
+        
+        [~, sparsity.controlCenter(pp)] = getActivityRatio(fixationResponses(1,:));
+        [~, sparsity.controlSurround(pp)] = getActivityRatio(fixationResponses(2,:));
+        [~, sparsity.controlCenterSurround(pp)] = getActivityRatio(fixationResponses(3,:));
+        [~, sparsity.controlLinSum(pp)] = getActivityRatio(fixationResponses(1,:) + fixationResponses(2,:));
+
+        [~, sparsity.shuffleCenter(pp)] = getActivityRatio(fixationResponses(4,:));
+        [~, sparsity.shuffleSurround(pp)] = getActivityRatio(fixationResponses(5,:));
+        [~, sparsity.shuffleCenterSurround(pp)] = getActivityRatio(fixationResponses(6,:));
+        [~, sparsity.shuffleLinSum(pp)] = getActivityRatio(fixationResponses(4,:) + fixationResponses(5,:));
+
         meanDiff.control(pp) = mean((fixationResponses(1,:) + fixationResponses(2,:)) - fixationResponses(3,:));
         meanDiff.shuffle(pp) = mean((fixationResponses(4,:) + fixationResponses(5,:)) - fixationResponses(6,:));
     end
@@ -325,12 +377,17 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     upLim = 1.1*max([meanDiff.control, meanDiff.shuffle]);
     addLineToAxis([downLim upLim],[downLim upLim],'unity',fig7,'k','--','none')
     
+    addLineToAxis(sparsity.controlCenterSurround(ONcellInds),sparsity.shuffleCenterSurround(ONcellInds),...
+        'ONcells',fig13,'b','none','o')
+    addLineToAxis(sparsity.controlCenterSurround(OFFcellInds),sparsity.shuffleCenterSurround(OFFcellInds),...
+        'OFFcells',fig13,'r','none','o')
+    downLim = min([sparsity.controlCenterSurround, sparsity.shuffleCenterSurround, 0]);
+    upLim = 1.1*max([sparsity.controlCenterSurround, sparsity.shuffleCenterSurround]);
+    addLineToAxis([downLim upLim],[downLim upLim],'unity',fig13,'k','--','none')
+    
     
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
     if (exportFigs)
-        figID = ['CSNIL_filters_',recID];
-        makeAxisStruct(fig1,figID ,'RFSurroundFigs')
-
         figID = ['CSNIL_controlInd_',recID];
         makeAxisStruct(fig2,figID ,'RFSurroundFigs')
 
@@ -363,6 +420,9 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
         
         figID = ['CSNIL_imageHistogram_',recID];
         makeAxisStruct(fig12,figID ,'RFSurroundFigs')
+        
+        figID = ['CSNIL_sparsity_',recID];
+        makeAxisStruct(fig13,figID ,'RFSurroundFigs')
     end
 end
 

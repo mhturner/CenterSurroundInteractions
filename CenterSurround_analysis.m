@@ -76,8 +76,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};  
 doCSNaturalImageLuminanceAnalysis(parentNode,...
-    'exportFigs',true,...
-    'convertToConductance',true);
+    'exportFigs',false);
 
 
 %% CORRELATED CS NOISE: tree
@@ -106,9 +105,27 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};  
 doCorrelatedCSNoiseAnalysis(parentNode,...
-    'exportFigs',true,...
-    'convertToConductance',true);
+    'exportFigs',true);
 
+%% EXPANDING SPOTS: tree
+
+list = loader.loadEpochList([dataFolder,'ExpandingSpots.mat'],dataFolder);
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+cellTypeSplit = @(list)splitOnCellType(list);
+cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    recordingSplit_java,...
+    'protocolSettings(spotIntensity)','protocolSettings(currentSpotSize)'});
+gui = epochTreeGUI(tree);
+%% EXPANDING SPOTS: do analysis & make figs
+%       Select cell type as parentNode
+clc; CloseAllFiguresExceptGUI();
+parentNode = gui.getSelectedEpochTreeNodes{1};
+doAreaSummationAnalysis(parentNode,'metric','integrated',...
+    'amplitudeMultiplier',1,'figureID','egOffPar');
 %% LINEAR EQUIVALENT DISC MOD SURROUND: tree
 list = loader.loadEpochList([dataFolder,'LinearEquivalentDiscModSurround.mat'],dataFolder);
 
@@ -137,7 +154,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDModSurroundAnalysis(parentNode,...
-    'metric','integrated','figureID','OFFexc');
+    'metric','integrated','figureID','OFFspk');
 
 % ,'figureID','OFFspk'
 

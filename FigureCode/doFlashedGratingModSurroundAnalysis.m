@@ -164,8 +164,8 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
         popNLIMatrix = cat(3,popNLIMatrix, NLImatrix);
     end %for cell
     %population NLI stats:
-    meanPop = mean(popNLIMatrix,3);
-    stdPop = std(popNLIMatrix,[],3);
+    meanPop = nanmean(popNLIMatrix,3);
+    stdPop = nanstd(popNLIMatrix,[],3);
     semPop = stdPop ./ sqrt(pp);
     
     colors = repmat(linspace(0,0.8,length(gratingContrastValues))',[1 3]);

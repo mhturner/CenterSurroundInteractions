@@ -35,6 +35,14 @@ function doLEDModSurroundAnalysis(node,varargin)
     set(get(fig4,'XLabel'),'String','NLI no surround')
     set(get(fig4,'YLabel'),'String','NLI with natural surround')
     
+    %scatter with connecting lines for +/- natural surround
+    figure; clf;
+    fig5=gca;
+    set(fig5,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig5,'XLabel'),'String','Image center')
+    set(get(fig5,'YLabel'),'String','Disc center')
+    
     populationNodes = {};
     ct = 0;
     for nn = 1:node.descendentsDepthFirst.length
@@ -47,6 +55,8 @@ function doLEDModSurroundAnalysis(node,varargin)
     
     NLIvalues.paramSurrounds = [];
     NLIvalues.naturalSurround = [];
+    resp_noSurround = [];
+    resp_natSurround = [];
     patchCt = 0;
     for pp = 1:length(populationNodes)
         cellNode = populationNodes{pp};
@@ -59,35 +69,41 @@ function doLEDModSurroundAnalysis(node,varargin)
             %rows: patch 1 image, patch 1 disc, patch 2 image, ...
             %cols: surrounds, [parameterized array, image patch surround]
             clear imageResponseMatrix
-            imageResponseMatrix.image.mean = nan(noPatches,noSurrounds);
-            imageResponseMatrix.image.err = nan(noPatches,noSurrounds);
-            imageResponseMatrix.disc.mean = nan(noPatches,noSurrounds);
-            imageResponseMatrix.disc.err = nan(noPatches,noSurrounds);
-            surroundContrastValues = nan(noPatches,noSurrounds);
+            imageResponseMatrix.image.mean = nan(noPatches,noSurrounds-1);
+            imageResponseMatrix.image.err = nan(noPatches,noSurrounds-1);
+            imageResponseMatrix.disc.mean = nan(noPatches,noSurrounds-1);
+            imageResponseMatrix.disc.err = nan(noPatches,noSurrounds-1);
+            surroundContrastValues = nan(noPatches,noSurrounds-1);
             for ll = 1:noPatches
                patchCt = patchCt + 1;
                patchNode = imageNode.children(ll);
                parameterizedSurroundContrasts = convertJavaArrayList(...
                         patchNode.epochList.firstValue.protocolSettings('surroundContrast'));
+               NLIvalues.paramSurrounds = cat(1,NLIvalues.paramSurrounds, nan(1,9));  
                for ss = 1:noSurrounds
                    currentSurroundContrast = patchNode.children(ss).splitValue;
                    
                    imageResp = getResponseAmplitudeStats(patchNode.children(ss).childBySplitValue('image').epochList,recType);
                    discResp = getResponseAmplitudeStats(patchNode.children(ss).childBySplitValue('intensity').epochList,recType);
-                   
-                   imageResponseMatrix.image.mean(ll,ss) = imageResp.(metric).mean;
-                   imageResponseMatrix.image.err(ll,ss) = imageResp.(metric).SEM;
-                   
-                   imageResponseMatrix.disc.mean(ll,ss) = discResp.(metric).mean;
-                   imageResponseMatrix.disc.err(ll,ss) = discResp.(metric).SEM;
-                   surroundContrastValues(ll,ss) = currentSurroundContrast;
-                   
+
                    newNLIvalue = (imageResp.(metric).mean - discResp.(metric).mean) ./ ...
                            (abs(imageResp.(metric).mean) + abs(discResp.(metric).mean));
                    if ismember(currentSurroundContrast,parameterizedSurroundContrasts)
-                       NLIvalues.paramSurrounds(patchCt,ss) = newNLIvalue;
+                       putInd = find(currentSurroundContrast==parameterizedSurroundContrasts);
+                       NLIvalues.paramSurrounds(patchCt,putInd) = newNLIvalue;
+                       
+                       imageResponseMatrix.image.mean(ll,putInd) = imageResp.(metric).mean;
+                       imageResponseMatrix.image.err(ll,putInd) = imageResp.(metric).SEM;
+
+                       imageResponseMatrix.disc.mean(ll,putInd) = discResp.(metric).mean;
+                       imageResponseMatrix.disc.err(ll,putInd) = discResp.(metric).SEM;
+                       surroundContrastValues(ll,putInd) = currentSurroundContrast;
                    else
                        NLIvalues.naturalSurround(patchCt) = newNLIvalue;
+                       resp_natSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
+                   end
+                   if currentSurroundContrast == 0
+                       resp_noSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
                    end
                end %for surround
                
@@ -99,13 +115,7 @@ function doLEDModSurroundAnalysis(node,varargin)
                     colors = pmkmp(length(presentedContrasts));
 
                     for cc = 1:length(imageResponseMatrix.image.mean(ll,:))
-                        currentSurround = surroundContrastValues(ll,cc);
-                        if ismember(currentSurround,parameterizedSurroundContrasts)
-                            plotMarker = 'o';
-                        else %natural surround intensity
-                            plotMarker = 'x';
-                        end
-                        
+                        plotMarker = 'o';
                         addLineToAxis(imageResponseMatrix.image.mean(ll,cc),...
                             imageResponseMatrix.disc.mean(ll,cc),...
                             ['mean',num2str(cc)],fig2,colors(cc,:),'none',plotMarker)
@@ -118,11 +128,10 @@ function doLEDModSurroundAnalysis(node,varargin)
                         tempY = imageResponseMatrix.disc.mean(ll,cc) + ...
                             [-imageResponseMatrix.disc.err(ll,cc), imageResponseMatrix.disc.err(ll,cc)];
                         addLineToAxis(tempX, tempY,['errY',num2str(cc)],fig2,colors(cc,:),'-','none')
-                        
                     end
                     
-                    limUp = max([imageResponseMatrix.image.mean(ll,:)', imageResponseMatrix.disc.mean(ll,:)']);
-                    limDown = min([imageResponseMatrix.image.mean(ll,:)', imageResponseMatrix.disc.mean(ll,:)']);
+                    limUp = max([imageResponseMatrix.image.mean(ll,:), imageResponseMatrix.disc.mean(ll,:)]);
+                    limDown = min([imageResponseMatrix.image.mean(ll,:), imageResponseMatrix.disc.mean(ll,:), 0]);
                     addLineToAxis([limDown limUp],[limDown limUp],...
                             'unity',fig2,'k','--','none')
 
@@ -131,11 +140,11 @@ function doLEDModSurroundAnalysis(node,varargin)
             end %for patch location
         
         end %for image
-        
-        
+
     end %for cell
-    
-    disp(size(NLIvalues.paramSurrounds,1));
+    disp('-------------------')
+    disp([num2str(length(NLIvalues.naturalSurround)), ' patches'])
+    disp([num2str(pp), ' cells'])
     for ss = 1:length(parameterizedSurroundContrasts)
         currentContrast = parameterizedSurroundContrasts(ss);
         meanPts = mean(NLIvalues.paramSurrounds(:,ss));
@@ -147,11 +156,36 @@ function doLEDModSurroundAnalysis(node,varargin)
     end
     zeroInd = parameterizedSurroundContrasts == 0;
     addLineToAxis(NLIvalues.paramSurrounds(:,zeroInd),NLIvalues.naturalSurround, 'dat',fig4,'k','none','o')
+    
+    tempMeanX = mean(NLIvalues.paramSurrounds(:,zeroInd));
+    tempMeanY = mean(NLIvalues.naturalSurround);
+    errX = std(NLIvalues.paramSurrounds(:,zeroInd)) / sqrt(length(NLIvalues.paramSurrounds(:,zeroInd)));
+    errY = std(NLIvalues.naturalSurround) / sqrt(length(NLIvalues.naturalSurround));
+    addLineToAxis(tempMeanX, tempMeanY, 'meanPt',fig4,'k','none','.')
+    addLineToAxis(tempMeanX + [errX, -errX], [tempMeanY tempMeanY], 'errX',fig4,'k','-','none')
+    addLineToAxis([tempMeanX, tempMeanX], tempMeanY + [errY, -errY], 'errY',fig4,'k','-','none')
+    
     addLineToAxis([0 1],[0 1],'unity',fig4,'k','--','none')
+    
+
+    addLineToAxis(resp_noSurround(:,1),resp_noSurround(:,2),...
+        'noSurround',fig5,colors(1,:),'none','.')
+    addLineToAxis(resp_natSurround(:,1),resp_natSurround(:,2),...
+        'natSurround',fig5,colors(5,:),'none','o')
+    for pp = 1:patchCt
+        addLineToAxis([resp_noSurround(pp,1), resp_natSurround(pp,1)],...
+            [resp_noSurround(pp,2), resp_natSurround(pp,2)],...
+        ['lineTo',num2str(pp)],fig5,[0.3 0.3 0.3],'-','none')
+    end
+    limDown = min([resp_natSurround(:)', resp_natSurround(:)', 0]);
+    limUp = 1.1*max([resp_natSurround(:)', resp_natSurround(:)']);
+    addLineToAxis([limUp limDown],[limUp limDown],...
+        'unity',fig5,'k','--','none')
     
     if ~isempty(figureID)
         makeAxisStruct(fig2,['LEDmodSeg_',figureID] ,'RFSurroundFigs')
         makeAxisStruct(fig3,['LEDmodS_NLIvsS_',figureID] ,'RFSurroundFigs')
         makeAxisStruct(fig4,['LEDmodS_NLInat_',figureID] ,'RFSurroundFigs')
+        makeAxisStruct(fig5,['LEDmodS_natScatter_',figureID] ,'RFSurroundFigs')
     end
 end
