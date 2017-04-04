@@ -11,7 +11,9 @@ function doLEDModSurroundAnalysis(node,varargin)
     metric = ip.Results.metric;
     figureID = ip.Results.figureID;
     
-    %Image vs Disc
+    egTraceSurroundContrast = 0.75;
+    
+    %Image vs Disc - e.g.
     figure; clf;
     fig2=gca;
     set(fig2,'XScale','linear','YScale','linear')
@@ -19,7 +21,7 @@ function doLEDModSurroundAnalysis(node,varargin)
     set(get(fig2,'XLabel'),'String','Image center')
     set(get(fig2,'YLabel'),'String','Disc center')
     
-    %NLI vs surround contrast
+    %NLI vs surround contrast - POP
     figure; clf;
     fig3=gca;
     set(fig3,'XScale','linear','YScale','linear')
@@ -27,7 +29,7 @@ function doLEDModSurroundAnalysis(node,varargin)
     set(get(fig3,'XLabel'),'String','Surround contrast')
     set(get(fig3,'YLabel'),'String','Mean NLI')
     
-    %NLI for no surround vs natural surround intensity
+    %NLI for no surround vs natural surround intensity - pop
     figure; clf;
     fig4=gca;
     set(fig4,'XScale','linear','YScale','linear')
@@ -35,13 +37,50 @@ function doLEDModSurroundAnalysis(node,varargin)
     set(get(fig4,'XLabel'),'String','NLI no surround')
     set(get(fig4,'YLabel'),'String','NLI with natural surround')
     
-    %scatter with connecting lines for +/- natural surround
+    %scatter with connecting lines for +/- natural surround - pop
     figure; clf;
     fig5=gca;
     set(fig5,'XScale','linear','YScale','linear')
     set(0, 'DefaultAxesFontSize', 12)
     set(get(fig5,'XLabel'),'String','Image center')
     set(get(fig5,'YLabel'),'String','Disc center')
+    
+    
+    %Raster - s = 0, image
+    figure; clf;
+    fig7=gca;
+    set(fig7,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig7,'XLabel'),'String','Time (s)')
+    set(get(fig7,'YLabel'),'String','Trial')
+    set(gcf, 'WindowStyle', 'docked')
+    
+    %Raster - s = 0, disc
+    figure; clf;
+    fig8=gca;
+    set(fig8,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig8,'XLabel'),'String','Time (s)')
+    set(get(fig8,'YLabel'),'String','Trial')
+    set(gcf, 'WindowStyle', 'docked')
+    
+    %Raster - s = eg surround, image
+    figure; clf;
+    fig9=gca;
+    set(fig9,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig9,'XLabel'),'String','Time (s)')
+    set(get(fig9,'YLabel'),'String','Trial')
+    set(gcf, 'WindowStyle', 'docked')
+    
+    %Raster - s = eg surround, disc
+    figure; clf;
+    fig10=gca;
+    set(fig10,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig10,'XLabel'),'String','Time (s)')
+    set(get(fig10,'YLabel'),'String','Trial')
+    set(gcf, 'WindowStyle', 'docked')
     
     populationNodes = {};
     ct = 0;
@@ -80,32 +119,61 @@ function doLEDModSurroundAnalysis(node,varargin)
                parameterizedSurroundContrasts = convertJavaArrayList(...
                         patchNode.epochList.firstValue.protocolSettings('surroundContrast'));
                NLIvalues.paramSurrounds = cat(1,NLIvalues.paramSurrounds, nan(1,9));  
-               for ss = 1:noSurrounds
-                   currentSurroundContrast = patchNode.children(ss).splitValue;
-                   
-                   imageResp = getResponseAmplitudeStats(patchNode.children(ss).childBySplitValue('image').epochList,recType);
-                   discResp = getResponseAmplitudeStats(patchNode.children(ss).childBySplitValue('intensity').epochList,recType);
+                for ss = 1:noSurrounds
+                    currentSurroundContrast = patchNode.children(ss).splitValue;
 
-                   newNLIvalue = (imageResp.(metric).mean - discResp.(metric).mean) ./ ...
+                    imageResp = getResponseAmplitudeStats(patchNode.children(ss).childBySplitValue('image').epochList,recType);
+                    discResp = getResponseAmplitudeStats(patchNode.children(ss).childBySplitValue('intensity').epochList,recType);
+
+                    newNLIvalue = (imageResp.(metric).mean - discResp.(metric).mean) ./ ...
                            (abs(imageResp.(metric).mean) + abs(discResp.(metric).mean));
-                   if ismember(currentSurroundContrast,parameterizedSurroundContrasts)
+                                          
+                    if ismember(currentSurroundContrast,parameterizedSurroundContrasts)
                        putInd = find(currentSurroundContrast==parameterizedSurroundContrasts);
                        NLIvalues.paramSurrounds(patchCt,putInd) = newNLIvalue;
-                       
+
                        imageResponseMatrix.image.mean(ll,putInd) = imageResp.(metric).mean;
                        imageResponseMatrix.image.err(ll,putInd) = imageResp.(metric).SEM;
 
                        imageResponseMatrix.disc.mean(ll,putInd) = discResp.(metric).mean;
                        imageResponseMatrix.disc.err(ll,putInd) = discResp.(metric).SEM;
                        surroundContrastValues(ll,putInd) = currentSurroundContrast;
-                   else
+                    else
                        NLIvalues.naturalSurround(patchCt) = newNLIvalue;
                        resp_natSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
-                   end
-                   if currentSurroundContrast == 0
+                    end
+                    if currentSurroundContrast == 0
                        resp_noSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
-                   end
-               end %for surround
+                    end
+
+                    if patchNode.custom.get('isExample')
+                        addLineToAxis(0,0,cellInfo.cellID,fig2,'k','none','none')
+                        addLineToAxis(0,0,cellInfo.cellID,fig7,'k','none','none')
+                        addLineToAxis(0,0,cellInfo.cellID,fig8,'k','none','none')
+                        addLineToAxis(0,0,cellInfo.cellID,fig9,'k','none','none')
+                        addLineToAxis(0,0,cellInfo.cellID,fig10,'k','none','none')
+                        if (currentSurroundContrast == egTraceSurroundContrast)
+                            %add example traces, with target surround
+                            imageTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('image').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
+                            discTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('intensity').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
+
+                            if strcmp(recType,'extracellular') %raster plot - eg surround
+                                addRastersToFigure(imageTrace.binary,fig9)
+                                addRastersToFigure(discTrace.binary,fig10)
+                            end
+
+                        elseif (currentSurroundContrast == 0)
+                            %add example traces, no surround
+                            imageTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('image').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
+                            discTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('intensity').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
+
+                            if strcmp(recType,'extracellular') %raster plot - no surround
+                                addRastersToFigure(imageTrace.binary,fig7)
+                                addRastersToFigure(discTrace.binary,fig8)
+                            end %end if raster
+                        end %end if eg surrounds
+                    end %end if example
+                end %for surround
                
                if patchNode.custom.get('isExample') %add to example figs
                     patchLocation = str2num(patchNode.splitValue);
@@ -165,7 +233,9 @@ function doLEDModSurroundAnalysis(node,varargin)
     addLineToAxis(tempMeanX + [errX, -errX], [tempMeanY tempMeanY], 'errX',fig4,'k','-','none')
     addLineToAxis([tempMeanX, tempMeanX], tempMeanY + [errY, -errY], 'errY',fig4,'k','-','none')
     
-    addLineToAxis([0 1],[0 1],'unity',fig4,'k','--','none')
+    limDown = min([NLIvalues.paramSurrounds(:)', NLIvalues.naturalSurround(:)', 0]);
+    limUp = 1.1*max([NLIvalues.paramSurrounds(:)', NLIvalues.naturalSurround(:)']);
+    addLineToAxis([limDown limUp],[limDown limUp],'unity',fig4,'k','--','none')
     
 
     addLineToAxis(resp_noSurround(:,1),resp_noSurround(:,2),...
@@ -187,5 +257,19 @@ function doLEDModSurroundAnalysis(node,varargin)
         makeAxisStruct(fig3,['LEDmodS_NLIvsS_',figureID] ,'RFSurroundFigs')
         makeAxisStruct(fig4,['LEDmodS_NLInat_',figureID] ,'RFSurroundFigs')
         makeAxisStruct(fig5,['LEDmodS_natScatter_',figureID] ,'RFSurroundFigs')
+        
+        if strcmp(recType,'extracellular') %raster plots
+            figID = 'LEDmodS_rast_imAlone';
+            makeAxisStruct(fig7,figID ,'RFSurroundFigs')
+            
+            figID = 'LEDmodS_rast_discAlone';
+            makeAxisStruct(fig8,figID ,'RFSurroundFigs')
+            
+            figID = 'LEDmodS_rast_imSurr';
+            makeAxisStruct(fig9,figID ,'RFSurroundFigs')
+            
+            figID = 'LEDmodS_rast_discSurr';
+            makeAxisStruct(fig10,figID ,'RFSurroundFigs')
+        end
     end
 end

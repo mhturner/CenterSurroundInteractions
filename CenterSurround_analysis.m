@@ -3,6 +3,7 @@ clear list; clear all; clear java; close all; clc; %#ok<CLJAVA,CLALL>
 loader = edu.washington.rieke.Analysis.getEntityLoader();
 treeFactory = edu.washington.rieke.Analysis.getEpochTreeFactory();
 dataFolder = '/Users/maxturner/CurrentData/RFSurround/';
+
 saveFileDirectory = '~/Documents/MATLAB/RFSurround/resources/SavedTreeFlags/';
 import auimodel.*
 import vuidocument.*
@@ -76,7 +77,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};  
 doCSNaturalImageLuminanceAnalysis(parentNode,...
-    'exportFigs',false);
+    'exportFigs',true);
 
 
 %% CORRELATED CS NOISE: tree
@@ -155,8 +156,6 @@ clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDModSurroundAnalysis(parentNode,...
     'metric','integrated','figureID','OFFspk');
-
-% ,'figureID','OFFspk'
 
 %% FLASHED GRATING MOD SURROUND: tree
 list = loader.loadEpochList([dataFolder,'FlashedGratingModSurround.mat'],dataFolder);
