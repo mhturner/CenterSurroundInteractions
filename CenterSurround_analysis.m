@@ -9,6 +9,29 @@ import auimodel.*
 import vuidocument.*
 cd('~/Documents/MATLAB/RFSurround/')
 
+%% DOVES CS ADDITIVITY: tree
+list = loader.loadEpochList([dataFolder,'DOVEScsAdditivity.mat'],dataFolder);
+
+cellTypeSplit = @(list)splitOnCellType(list);
+cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    recordingSplit_java,...
+    'protocolSettings(stimulusIndex)',...
+    'protocolSettings(currentStimulus)'});
+gui = epochTreeGUI(tree);
+%% DOVES CS ADDITIVITY: analysis and figs
+% flag recType nodes in population, example nodes are stimulusIndex
+% select whole tree at root
+clc; CloseAllFiguresExceptGUI();
+parentNode = gui.getSelectedEpochTreeNodes{1};
+doDOVEScsAdditivityAnalysis(parentNode,...
+    'exportFigs',true);
+
+
 %% CENTER SURROUND NOISE: tree
 
 list = loader.loadEpochList([dataFolder,'CenterSurroundNoise.mat'],dataFolder);

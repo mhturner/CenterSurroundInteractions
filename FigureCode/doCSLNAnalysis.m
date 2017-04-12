@@ -530,6 +530,19 @@ function doCSLNAnalysis(node,varargin)
 % %             end
             
             %3D response surface with highlighted slices
+            
+            % write out to csv for igor..
+            [tempCC, tempSS] = meshgrid(centerGS,surroundGS);
+%             csvwrite([figDir, 'Layer1.csv'],tempCC);
+%             csvwrite([figDir, 'Layer2.csv'],tempSS);
+%             csvwrite([figDir, 'Layer3.csv'],responseMean);
+
+
+            save([figDir, 'Layer1.mat'],'tempCC');
+            save([figDir, 'Layer2.mat'],'tempSS');
+            save([figDir, 'Layer3.mat'],'responseMean');
+                 
+            %make in matlab..
             fh = figure(22); clf;
             h = surf(centerGS,surroundGS,responseMean);
             h.FaceAlpha = 0.4;
@@ -674,39 +687,39 @@ function doCSLNAnalysis(node,varargin)
     save([figDir, 'diffHeatMaps.mat'],'diffHeatMaps','ONcellInds','OFFcellInds');
     
     %population difference heat maps:
-    rgb1 = [0.8 0.05 0.05];
-    rgb2 = [0.05 0.05 0.8];
-    cMap = diverging_map(linspace(0,1,64),rgb1,rgb2);
-    cXX = linspace(-1,1,15);
-    cYY = linspace(-1,1,15);
-    meanON = mean(diffHeatMaps(:,:,ONcellInds),3);
-    meanOFF = mean(diffHeatMaps(:,:,OFFcellInds),3);
+% %     rgb1 = [0.8 0.05 0.05];
+% %     rgb2 = [0.05 0.05 0.8];
+% %     cMap = diverging_map(linspace(0,1,64),rgb1,rgb2);
+% %     cXX = linspace(-1,1,15);
+% %     cYY = linspace(-1,1,15);
+% %     meanON = mean(diffHeatMaps(:,:,ONcellInds),3);
+% %     meanOFF = mean(diffHeatMaps(:,:,OFFcellInds),3);
 
-    fh = figure(26); clf; pcolor(cXX,cYY,meanON); shading flat;axis square;
-    colorLimit = max(abs(meanON(:)));
-    caxis([-colorLimit colorLimit])
-    colormap(cMap); cb = colorbar; 
-    cb.Limits = [min(meanON(:)) max(meanON(:))];
-    hold on;
-    plot([-1 1],[0 0],'k--')
-    plot([0 0],[-1 1],'k--')
-    set(fh,'Position',[1397         676         501         419])
-    drawnow;
-    figID = 'heatMap_diff_ON';
-    print(fh,[figDir,figID],'-depsc')
+% %     fh = figure(26); clf; pcolor(cXX,cYY,meanON); shading flat;axis square;
+% %     colorLimit = max(abs(meanON(:)));
+% % %     caxis([-colorLimit colorLimit])
+% %     colormap(cMap); cb = colorbar; 
+% %     cb.Limits = [min(meanON(:)) max(meanON(:))];
+% %     hold on;
+% %     plot([-1 1],[0 0],'k--')
+% %     plot([0 0],[-1 1],'k--')
+% %     set(fh,'Position',[1397         676         501         419])
+% %     drawnow;
+% %     figID = 'heatMap_diff_ON';
+% %     print(fh,[figDir,figID],'-depsc')
 
-    fh = figure(27); clf; pcolor(cXX,cYY,meanOFF); shading flat;axis square;
-    colorLimit = max(abs(meanOFF(:)));
-    caxis([-colorLimit colorLimit])
-    colormap(cMap); cb = colorbar;
-    cb.Limits = [min(meanOFF(:)) max(meanOFF(:))];
-    hold on;
-    plot([-1 1],[0 0],'k--')
-    plot([0 0],[-1 1],'k--')
-    set(fh,'Position',[1397         676         501         419])
-    drawnow;
-    figID = 'heatMap_diff_OFF';
-    print(fh,[figDir,figID],'-depsc')
+% %     fh = figure(27); clf; pcolor(cXX,cYY,meanOFF); shading flat;axis square;
+% %     colorLimit = max(abs(meanOFF(:)));
+% % %     caxis([-colorLimit colorLimit])
+% %     colormap(cMap); cb = colorbar;
+% %     cb.Limits = [min(meanOFF(:)) max(meanOFF(:))];
+% %     hold on;
+% %     plot([-1 1],[0 0],'k--')
+% %     plot([0 0],[-1 1],'k--')
+% %     set(fh,'Position',[1397         676         501         419])
+% %     drawnow;
+% %     figID = 'heatMap_diff_OFF';
+% %     print(fh,[figDir,figID],'-depsc')
 
     
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
