@@ -29,7 +29,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doDOVEScsAdditivityAnalysis(parentNode,...
-    'exportFigs',true);
+    'exportFigs',false);
 
 
 %% CENTER SURROUND NOISE: tree
@@ -133,7 +133,7 @@ doCorrelatedCSNoiseAnalysis(parentNode,...
 
 %% EXPANDING SPOTS: tree
 
-list = loader.loadEpochList([dataFolder,'ExpandingSpots.mat'],dataFolder);
+list = loader.loadEpochList([dataFolder,'ExpandingSpots_ES.mat'],dataFolder);
 recordingSplit = @(list)splitOnRecKeyword(list);
 recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
 
@@ -141,15 +141,15 @@ cellTypeSplit = @(list)splitOnCellType(list);
 cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
 
 tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    'protocolSettings(spotIntensity)',...
     recordingSplit_java,...
-    'protocolSettings(spotIntensity)','protocolSettings(currentSpotSize)'});
+    'protocolSettings(currentSpotSize)'});
 gui = epochTreeGUI(tree);
-%% EXPANDING SPOTS: do analysis & make figs
-%       Select cell type as parentNode
+%% EXPANDING SPOTS: do analysis & make figs for exc vs. spikes analysis
+%       Flag and example at spotIntensity. Select cell type
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
-doAreaSummationAnalysis(parentNode,'metric','integrated',...
-    'amplitudeMultiplier',1,'figureID','egOffPar');
+doExcSpikesSurroundAnalysis(parentNode,'metric','integrated','exportFigs',true);
 %% LINEAR EQUIVALENT DISC MOD SURROUND: tree
 list = loader.loadEpochList([dataFolder,'LinearEquivalentDiscModSurround.mat'],dataFolder);
 

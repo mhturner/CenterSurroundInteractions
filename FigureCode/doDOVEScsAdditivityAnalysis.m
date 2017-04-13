@@ -10,53 +10,14 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
     figColors = pmkmp(8);
     figDir = '~/Documents/MATLAB/RFSurround/resources/TempFigs/'; %for saved eps figs
     
-    figure; clf;
-    fig1=gca; % Response traces, c and s
-    set(fig1,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig1,'XLabel'),'String','Time (s)')
-    set(get(fig1,'YLabel'),'String','Response')
-    set(gcf, 'WindowStyle', 'docked')
     
-    figure; clf;
-    fig2=gca; % Response traces, linear sum and cs
-    set(fig2,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig2,'XLabel'),'String','Time (s)')
-    set(get(fig2,'YLabel'),'String','Response')
-    set(gcf, 'WindowStyle', 'docked')
+    figure; clf; fig1=gca; initFig(fig1,'Time (s)','Response') % Response traces, c and s
+    figure; clf; fig2=gca; initFig(fig2,'Time (s)','Response') % Response traces, linear sum and cs
+    figure; clf; fig3=gca; initFig(fig3,'Time (s)','Location (arcmin)') % Eye movement positions over time
     
-    figure; clf;
-    fig3=gca; % Eye movement positions over time
-    set(fig3,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig3,'XLabel'),'String','Time (s)')
-    set(get(fig3,'YLabel'),'String','Location (arcmin)')
-    set(gcf, 'WindowStyle', 'docked')
-
-    figure; clf;
-    fig11=gca; % RASTER - center alone (spike rec only)
-    set(fig11,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig11,'XLabel'),'String','Time (s)')
-    set(get(fig11,'YLabel'),'String','Trial')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf;
-    fig12=gca; % RASTER - surround alone (spike rec only)
-    set(fig12,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig12,'XLabel'),'String','Time (s)')
-    set(get(fig12,'YLabel'),'String','Trial')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf;
-    fig13=gca; % RASTER - center + surround (spike rec only)
-    set(fig13,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig13,'XLabel'),'String','Time (s)')
-    set(get(fig13,'YLabel'),'String','Trial')
-    set(gcf, 'WindowStyle', 'docked')
+    figure; clf; fig11=gca; initFig(fig11,'Time (s)','Trial') % RASTER - center alone (spike rec only)
+    figure; clf; fig12=gca; initFig(fig12,'Time (s)','Trial') % RASTER - surround alone (spike rec only)
+    figure; clf; fig13=gca; initFig(fig13,'Time (s)','Trial') % RASTER - center + surround (spike rec only)
     
     populationNodes = {};
     ct = 0;
@@ -113,6 +74,19 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
                 drawnow;
                 figID = 'egNatImage_DOVES';
                 print(fh,[figDir,figID],'-depsc')
+                
+                %image patch
+                patchSize = 240; %pixels
+                centerX = FEMdata(stimNode.splitValue).eyeX(end);
+                centerY = FEMdata(stimNode.splitValue).eyeY(end);
+                imagePatch = img(round(centerX - patchSize/2 + 1) : round(centerX + patchSize/2),...
+                    round(centerY - patchSize/2 + 1) : round(centerY + patchSize/2));
+                fh = figure(22); clf;
+                imagesc(imagePatch'); colormap(gray); axis image; axis off;
+                drawnow;
+                figID = 'egNatImagePatch_DOVES';
+                print(fh,[figDir,figID],'-depsc')
+                
                 
                 %eye position over time
                 preTime = stimNode.epochList.firstValue.protocolSettings('preTime') / 1e3; %sec

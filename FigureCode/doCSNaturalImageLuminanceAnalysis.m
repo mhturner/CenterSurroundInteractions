@@ -10,91 +10,25 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     exportFigs = ip.Results.exportFigs;
     
     figColors = pmkmp(8);
+    
+    figure; clf; fig2=gca; initFig(fig2,'Time (s)','Response') %eg Mean trace: C, S, indep, no shuffle
+    figure; clf; fig3=gca; initFig(fig3,'Time (s)','Response') %eg Mean trace: CS together and linear sum, no shuffle
+    
+    figure; clf; fig4=gca; initFig(fig4,'Time (s)','Response') %eg Mean trace: C, S, indep, with shuffle
+    figure; clf; fig5=gca; initFig(fig5,'Time (s)','Response') %eg Mean trace: CS together and linear sum, with shuffle
+    
+    figure; clf; fig6=gca; initFig(fig6,'R(C+S)','R(C) + R(S)') %eg scatter plot of R(C) + R(S) vs R(C+S)
+    figure; clf; fig7=gca; initFig(fig7,'Control Diff. (pC)','Shuffle Diff. (pC)') %population. Difference (linear sum - measured) for control vs shuffled. ON and OFF cells
 
-    figure; clf; fig2=gca; %eg Mean trace: C, S, indep, no shuffle
-    set(fig2,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig2,'XLabel'),'String','Time (s)')
-    set(get(fig2,'YLabel'),'String','Response')
-    set(gcf, 'WindowStyle', 'docked')
+    figure; clf; fig8=gca; initFig(fig8,'Time(s)','Intensity') %eg. C and S stims for control
+    figure; clf; fig9=gca; initFig(fig9,'Time(s)','Intensity') %eg. C and S stims for shuffled
     
-    figure; clf; fig3=gca; %eg Mean trace: CS together and linear sum, no shuffle
-    set(fig3,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig3,'XLabel'),'String','Time (s)')
-    set(get(fig3,'YLabel'),'String','Response')
-    set(gcf, 'WindowStyle', 'docked')
+    figure; clf; fig10=gca; initFig(fig10,'Center intensity','Surround intensity') %eg. C and S stim scatter, control
+    figure; clf; fig11=gca; initFig(fig11,'Center intensity','Surround intensity') %eg. C and S stim scatter, shuffled
     
-    figure; clf; fig4=gca; %eg Mean trace: C, S, indep, with shuffle
-    set(fig4,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig4,'XLabel'),'String','Time (s)')
-    set(get(fig4,'YLabel'),'String','Response')
-    set(gcf, 'WindowStyle', 'docked')
+    figure; clf; fig12=gca; initFig(fig12,'Intensity','Probability') %eg. Nat image intensity histogram
     
-    figure; clf; fig5=gca; %eg Mean trace: CS together and linear sum, with shuffle
-    set(fig5,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig5,'XLabel'),'String','Time (s)')
-    set(get(fig5,'YLabel'),'String','Response')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig6=gca; %eg scatter plot of R(C) + R(S) vs R(C+S)
-    set(fig6,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig6,'XLabel'),'String','R(C+S)')
-    set(get(fig6,'YLabel'),'String','R(C) + R(S)')
-    set(gcf, 'WindowStyle', 'docked')
-
-    figure; clf; fig7=gca; %population. Difference (linear sum - measured) for control vs shuffled. ON and OFF cells
-    set(fig7,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig7,'XLabel'),'String','Mean difference (control c,s)')
-    set(get(fig7,'YLabel'),'String','Mean difference (shuffled c,s)')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig8=gca; %eg. C and S stims for control
-    set(fig8,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig8,'XLabel'),'String','Time(s)')
-    set(get(fig8,'YLabel'),'String','Intensity')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig9=gca; %eg. C and S stims for shuffled
-    set(fig9,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig9,'XLabel'),'String','Time(s)')
-    set(get(fig9,'YLabel'),'String','Intensity')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig10=gca; %eg. C and S stim scatter, control
-    set(fig10,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig10,'XLabel'),'String','Center intensity')
-    set(get(fig10,'YLabel'),'String','Surround intensity')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig11=gca; %eg. C and S stim scatter, shuffled
-    set(fig11,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig11,'XLabel'),'String','Center intensity')
-    set(get(fig11,'YLabel'),'String','Surround intensity')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig12=gca; %eg. Nat image intensity histogram
-    set(fig12,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig12,'XLabel'),'String','Intensity')
-    set(get(fig12,'YLabel'),'String','Probability')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig13=gca; %sparsity CS corr vs shuffled
-    set(fig13,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig13,'XLabel'),'String','Sparsity natural CS')
-    set(get(fig13,'YLabel'),'String','Sparsity shuffled CD')
-    set(gcf, 'WindowStyle', 'docked')
-    
+    figure; clf; fig13=gca; initFig(fig13,'Sparsity natural CS','Sparsity shuffled CS') %sparsity CS corr vs shuffled
     
     populationNodes = {};
     ct = 0;

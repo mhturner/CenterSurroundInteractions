@@ -2,9 +2,7 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
     ip = inputParser;
     ip.addRequired('node',@(x)isa(x,'edu.washington.rieke.jauimodel.AuiEpochTree'));
     addParameter(ip,'exportFigs',true,@islogical);
-    addParameter(ip,'convertToConductance',true,@islogical);
-    
-    figDir = '~/Documents/MATLAB/RFSurround/resources/TempFigs/'; %for saved eps figs
+    addParameter(ip,'convertToConductance',false,@islogical);
     
     ip.parse(node,varargin{:});
     node = ip.Results.node;
@@ -12,83 +10,20 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
     convertToConductance = ip.Results.convertToConductance;
     
     figColors = pmkmp(8);
-
-% %     figure; clf; fig1=gca; %eg Linear filters
-% %     set(fig1,'XScale','linear','YScale','linear')
-% %     set(0, 'DefaultAxesFontSize', 12)
-% %     set(get(fig1,'XLabel'),'String','Time (s)')
-% %     set(get(fig1,'YLabel'),'String','')
-% %     set(gcf, 'WindowStyle', 'docked')
     
-    figure; clf; fig2=gca; %eg Mean trace: CS and lin sum. Corr = -1
-    set(fig2,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig2,'XLabel'),'String','Time (s)')
-    set(get(fig2,'YLabel'),'String','Response')
-    set(gcf, 'WindowStyle', 'docked')
+    figure; clf; fig2=gca; initFig(fig2,'Time (s)','Response') %eg Mean trace: CS and lin sum. Corr = -1
+    figure; clf; fig3=gca; initFig(fig3,'Time (s)','Response') %eg Mean trace: CS and lin sum. Corr = 0
+    figure; clf; fig4=gca; initFig(fig4,'Time (s)','Response') %eg Mean trace: CS and lin sum. Corr = +1
     
-    figure; clf; fig3=gca; %eg Mean trace: CS and lin sum. Corr = 0
-    set(fig3,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig3,'XLabel'),'String','Time (s)')
-    set(get(fig3,'YLabel'),'String','Response')
-    set(gcf, 'WindowStyle', 'docked')
+    figure; clf; fig5=gca; initFig(fig5,'Time (s)','Intensity') %eg stim trace: Corr = -1
+    figure; clf; fig6=gca; initFig(fig6,'Time (s)','Intensity') %eg stim trace: Corr = 0
+    figure; clf; fig7=gca; initFig(fig7,'Time (s)','Intensity') %eg stim trace: Corr = +1
     
-    figure; clf; fig4=gca; %eg Mean trace: CS and lin sum. Corr = +1
-    set(fig4,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig4,'XLabel'),'String','Time (s)')
-    set(get(fig4,'YLabel'),'String','Response')
-    set(gcf, 'WindowStyle', 'docked')
+    figure; clf; fig8=gca; initFig(fig8,'Center','Surround') %eg stim cloud: Corr = -1
+    figure; clf; fig9=gca; initFig(fig9,'Center','Surround') %eg stim cloud: Corr = 0
+    figure; clf; fig10=gca; initFig(fig10,'Center','Surround') %eg stim cloud: Corr = +1
     
-    figure; clf; fig5=gca; %eg stim trace: Corr = -1
-    set(fig5,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig5,'XLabel'),'String','Time (s)')
-    set(get(fig5,'YLabel'),'String','Intensity')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig6=gca; %eg stim trace: Corr = 0
-    set(fig6,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig6,'XLabel'),'String','Time (s)')
-    set(get(fig6,'YLabel'),'String','Intensity')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig7=gca; %eg stim trace: Corr = +1
-    set(fig7,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig7,'XLabel'),'String','Time (s)')
-    set(get(fig7,'YLabel'),'String','Intensity')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig8=gca; %eg stim cloud: Corr = -1
-    set(fig8,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig8,'XLabel'),'String','Center')
-    set(get(fig8,'YLabel'),'String','Surround')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig9=gca; %eg stim cloud: Corr = 0
-    set(fig9,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig9,'XLabel'),'String','Center')
-    set(get(fig9,'YLabel'),'String','Surround')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig10=gca; %eg stim cloud: Corr = +1
-    set(fig10,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig10,'XLabel'),'String','Center')
-    set(get(fig10,'YLabel'),'String','Surround')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    figure; clf; fig11=gca; %eg stim cloud: Corr = +1
-    set(fig11,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig11,'XLabel'),'String','CS correlation')
-    set(get(fig11,'YLabel'),'String','Deviation from linearity')
-    set(gcf, 'WindowStyle', 'docked')
+    figure; clf; fig11=gca; initFig(fig11,'CS correlation','Deviation from linearity (pC)') %Pop data: dev. from linear vs CS correlation
     
     populationNodes = {};
     ct = 0;
@@ -119,24 +54,6 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
         end
         
         CorrelatedNoiseNode = populationNodes{pp}.childBySplitValue('CorrelatedCSNoise');
-% %         filterNoiseNode = populationNodes{pp}.childBySplitValue('CenterSurroundNoise').children(1);
-        
-% % % % % % % % GET LINEAR FILTERS % % % % % % % % % % % % % % % % 
-% %         % center:
-% %         center = getLinearFilterAndPrediction(filterNoiseNode.childBySplitValue('Center').epochList,recType,...
-% %             'seedName','centerNoiseSeed');
-% %         % surround:
-% %         surround = getLinearFilterAndPrediction(filterNoiseNode.childBySplitValue('Surround').epochList,recType,...
-% %             'seedName','surroundNoiseSeed');
-        
-        if CorrelatedNoiseNode.custom.get('isExample')
-% %             %filters:
-% %             addLineToAxis([center.filterTimeVector],[center.LinearFilter],...
-% %                 'center',fig1,figColors(1,:),'-','none')
-% %             addLineToAxis([surround.filterTimeVector],[surround.LinearFilter],...
-% %                 'surround',fig1,figColors(4,:),'-','none')
-% %             addLineToAxis(0,0,cellInfo.cellID,fig1,'k','none','none')
-        end
         
 % % % % % % % % DO ADDITIVITY ANALYSIS % % % % % % % % % % % % % % % %
         meanLinearDeviation = [];
@@ -209,9 +126,6 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
 
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
     if (exportFigs)
-%         figID = ['CScorr_filters_',recID];
-%         makeAxisStruct(fig1,figID ,'RFSurroundFigs')
-
         figID = ['CScorr_respNeg_',recID];
         makeAxisStruct(fig2,figID ,'RFSurroundFigs')
 
@@ -244,5 +158,3 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
         
     end
 end
-
-
