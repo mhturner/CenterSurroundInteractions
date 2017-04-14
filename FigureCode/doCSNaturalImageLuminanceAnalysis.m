@@ -70,25 +70,6 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                 end
             end
             
-            %timing stuff:
-            timingEpoch = controlCSNode.childBySplitValue('Center').epochList.firstValue;
-            frameRate = timingEpoch.protocolSettings('background:Microdisplay Stage@localhost:monitorRefreshRate');
-            if isempty(frameRate)
-                frameRate = timingEpoch.protocolSettings('background:Microdisplay_Stage@localhost:monitorRefreshRate');
-            end
-            sampleRate = currentNode.epochList.firstValue.protocolSettings('sampleRate');
-            preTime = (currentNode.epochList.firstValue.protocolSettings('preTime') / 1e3); %sec
-            stimTime = (currentNode.epochList.firstValue.protocolSettings('stimTime') / 1e3); %sec
-            fixationDuration = (currentNode.epochList.firstValue.protocolSettings('fixationDuration') / 1e3) *sampleRate; %data points
-            noFixations = currentNode.epochList.firstValue.protocolSettings('stimTime') / ...
-                currentNode.epochList.firstValue.protocolSettings('fixationDuration');
-            
-            FMdata = (riekesuite.getResponseVector(timingEpoch,'Frame Monitor'))';
-            [frameTimes, ~] = getFrameTiming(FMdata,0);
-            preFrames = frameRate*(preTime);
-            stimFrames = frameRate*(stimTime);
-            startPoint = frameTimes(preFrames);
-            
             if strcmp(recType,'extracellular')
                 attachSpikeBinary = true;
             else
@@ -103,12 +84,40 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
             shuffleSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
             shuffleCenterSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Center-Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
 
+            %timing stuff:
+            timingEpoch = controlCSNode.childBySplitValue('Center').epochList.firstValue;
+            frameRate = timingEpoch.protocolSettings('background:Microdisplay Stage@localhost:monitorRefreshRate');
+            if isempty(frameRate)
+                frameRate = timingEpoch.protocolSettings('background:Microdisplay_Stage@localhost:monitorRefreshRate');
+            end
+            FMdata = (riekesuite.getResponseVector(timingEpoch,'Frame Monitor'))';
+            [measuredFrameTimes, ~] = getFrameTiming(FMdata,0);
             
+            sampleRate = currentNode.epochList.firstValue.protocolSettings('sampleRate');
+            preTime = currentNode.epochList.firstValue.protocolSettings('preTime') / 1e3; %sec
+            stimTime = currentNode.epochList.firstValue.protocolSettings('stimTime') / 1e3; %sec
+            tailTime = currentNode.epochList.firstValue.protocolSettings('tailTime') / 1e3; %sec
+            totalTime = preTime + stimTime + tailTime;
+            fixationDuration = currentNode.epochList.firstValue.protocolSettings('fixationDuration') / 1e3; %sec
+            targetSaccadeTimes = 0:fixationDuration:(stimTime-fixationDuration);
+            
+            idealFrameTimes = 0:(1/frameRate):totalTime;
+            stateTime = idealFrameTimes - preTime;
+            saccadeTimes = nan(size(targetSaccadeTimes));
+            for ff = 1:length(targetSaccadeTimes)
+                tempInd = find(stateTime >= targetSaccadeTimes(ff),1);
+                saccadeTimes(ff) = measuredFrameTimes(tempInd);
+            end
+            saccadeTimes(end+1) = saccadeTimes(end) + mean(diff(saccadeTimes));
+            saccadeTimes = round(saccadeTimes);
+            noFixations = currentNode.epochList.firstValue.protocolSettings('stimTime') / ...
+                currentNode.epochList.firstValue.protocolSettings('fixationDuration');
+  
             % get fixation responses for this image
             for ff = 1:noFixations
                 fixationCount = fixationCount + 1;
-                tempStart = (ff-1)*fixationDuration + startPoint + 1;
-                tempEnd = ff*fixationDuration + startPoint;
+                tempStart = saccadeTimes(ff);
+                tempEnd = saccadeTimes(ff+1);
                 
                 if strcmp(recType,'extracellular') %spikes: spike count
                     %count spikes in each trial on this fixation. Mean
@@ -135,7 +144,7 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                     fixationResponses(5,fixationCount) = chargeMult * trapz(shuffleSurround.mean(tempStart:tempEnd)) / sampleRate;
                     fixationResponses(6,fixationCount) = chargeMult * trapz(shuffleCenterSurround.mean(tempStart:tempEnd)) / sampleRate;
                 end
-            end
+            end %end for fixations
 
             if strcmp(recType,'extracellular')
                 [frameTimes, ~] = getFrameTiming(FMdata,0);
@@ -184,7 +193,7 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                     'measuredCS',fig5,'k','-','none')
                 addLineToAxis(0,0,cellInfo.cellID,fig5,'k','none','none')
                 
-                % scatter plot with peak conductance per fixation
+                % scatter plot with response per fixation
                 % just for this example image
                 egIndsToPull = (size(fixationResponses,2) - noFixations + 1):size(fixationResponses,2);
                 addLineToAxis(fixationResponses(3,egIndsToPull),...
@@ -220,16 +229,18 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                 addLineToAxis(0,0,cellInfo.cellID,fig6,'k','none','none')
                 % c and s stims
                 %   traces
+                startPoint = saccadeTimes(1);
+                fixationPoints = fixationDuration * sampleRate;
                 pad = ones(1,startPoint) .* controlCSNode.epochList.firstValue.protocolSettings('backgroundIntensity');
                 controlCStim_fix = convertJavaArrayList(controlCSNode.epochList.firstValue.protocolSettings('CenterIntensity'));
                 controlSStim_fix = convertJavaArrayList(controlCSNode.epochList.firstValue.protocolSettings('SurroundIntensity'));
-                controlCStim = [pad, kron(controlCStim_fix,ones(1,fixationDuration)), pad];
-                controlSStim = [pad, kron(controlSStim_fix,ones(1,fixationDuration)), pad];
+                controlCStim = [pad, kron(controlCStim_fix,ones(1,fixationPoints)), pad];
+                controlSStim = [pad, kron(controlSStim_fix,ones(1,fixationPoints)), pad];
 
                 shuffleCStim_fix = convertJavaArrayList(shuffleCSNode.epochList.firstValue.protocolSettings('CenterIntensity'));
                 shuffleSStim_fix = convertJavaArrayList(shuffleCSNode.epochList.firstValue.protocolSettings('SurroundIntensity'));
-                shuffleCStim = [pad, kron(shuffleCStim_fix,ones(1,fixationDuration)), pad];
-                shuffleSStim = [pad, kron(shuffleSStim_fix,ones(1,fixationDuration)), pad];
+                shuffleCStim = [pad, kron(shuffleCStim_fix,ones(1,fixationPoints)), pad];
+                shuffleSStim = [pad, kron(shuffleSStim_fix,ones(1,fixationPoints)), pad];
                 timeVec = (0:(length(controlCStim)-1)) ./ sampleRate;
 
                 addLineToAxis(timeVec,controlCStim,'C',fig8,figColors(1,:),'-','none')
@@ -279,15 +290,6 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                 
             end %eg cell plots
         end %for images
-        
-% %         [~, sparsity.controlCenter(pp)] = getActivityRatio(controlCenter.frameResp);
-% %         [~, sparsity.controlSurround(pp)] = getActivityRatio(controlSurround.frameResp);
-% %         [~, sparsity.controlCenterSurround(pp)] = getActivityRatio(controlCenterSurround.frameResp);
-% % 
-% %         [~, sparsity.shuffleCenter(pp)] = getActivityRatio(shuffleCenter.frameResp);
-% %         [~, sparsity.shuffleSurround(pp)] = getActivityRatio(shuffleSurround.frameResp);
-% %         [~, sparsity.shuffleCenterSurround(pp)] = getActivityRatio(shuffleCenterSurround.frameResp);
-        
         
         [~, sparsity.controlCenter(pp)] = getActivityRatio(fixationResponses(1,:));
         [~, sparsity.controlSurround(pp)] = getActivityRatio(fixationResponses(2,:));

@@ -35,10 +35,11 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
         end
     end
 
-    meanDiff.shuffle = [];
-    meanDiff.control = [];
-    ONcellInds = [];
+    
+    correlationValues = [-1 -0.5 0 0.5 1];
+    LinearDeviation = nan(length(populationNodes),length(correlationValues)); %rows are cells, columns correlation values
     OFFcellInds = [];
+    ONcellInds = [];
     for pp = 1:length(populationNodes)
         cellInfo = getCellInfoFromEpochList(populationNodes{pp}.epochList);
         recType = getRecordingTypeFromEpochList(populationNodes{pp}.epochList);
@@ -52,16 +53,13 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
             OFFcellInds = cat(2,OFFcellInds,pp);
             plotColor = 'k';
         end
-        
         CorrelatedNoiseNode = populationNodes{pp}.childBySplitValue('CorrelatedCSNoise');
         
 % % % % % % % % DO ADDITIVITY ANALYSIS % % % % % % % % % % % % % % % %
-        meanLinearDeviation = [];
-        correlationValues = [];
-        for correlationIndex = 1:CorrelatedNoiseNode.children.length
-            currentNode = CorrelatedNoiseNode.children(correlationIndex);
+        for cc = 1:CorrelatedNoiseNode.children.length
+            currentNode = CorrelatedNoiseNode.children(cc);
             currentCorrelationValue = currentNode.splitValue;
-            correlationValues(correlationIndex) = currentCorrelationValue;
+            correlationIndex = find(currentCorrelationValue == correlationValues);
 
             centerResp = getMeanResponseTrace(currentNode.childBySplitValue('Center').epochList,recType);
             surroundResp = getMeanResponseTrace(currentNode.childBySplitValue('Surround').epochList,recType);
@@ -77,32 +75,62 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
                 chargeMult = 1;
             end
 
-            meanLinearDeviation(correlationIndex) = chargeMult * mean(linSum - measuredResponse);
-            
-            %reconstruct noise stimuli:
-            backgroundIntensity = currentNode.epochList.firstValue.protocolSettings('backgroundIntensity');
-            sampleRate = currentNode.epochList.firstValue.protocolSettings('sampleRate');
-            prePts = sampleRate * currentNode.epochList.firstValue.protocolSettings('preTime') / 1e3;
-            frameDwell = currentNode.epochList.firstValue.protocolSettings('frameDwell');
-            lightCrafterFlag = currentNode.epochList.firstValue.protocolSettings.keySet.contains('background:LightCrafter Stage@localhost:lightCrafterPatternRate');
-            if ~lightCrafterFlag
-                lightCrafterFlag = currentNode.epochList.firstValue.protocolSettings.keySet.contains('background:LightCrafter_Stage@localhost:lightCrafterPatternRate');
+            %timing stuff:
+            timingEpoch = currentNode.childBySplitValue('Center').epochList.firstValue;
+            frameRate = timingEpoch.protocolSettings('background:Microdisplay Stage@localhost:monitorRefreshRate');
+            if isempty(frameRate)
+                frameRate = timingEpoch.protocolSettings('background:Microdisplay_Stage@localhost:monitorRefreshRate');
             end
-            FMdata = (riekesuite.getResponseVector(currentNode.epochList.firstValue,'Frame Monitor'))';
-            frameTimes = getFrameTiming(FMdata,lightCrafterFlag);
-            updateLength = frameDwell*mean(diff(frameTimes));
+            FMdata = (riekesuite.getResponseVector(timingEpoch,'Frame Monitor'))';
+            [measuredFrameTimes, ~] = getFrameTiming(FMdata,0); %frame flips in data points
+            sampleRate = currentNode.epochList.firstValue.protocolSettings('sampleRate'); %Hz
+            preTime = currentNode.epochList.firstValue.protocolSettings('preTime') / 1e3; %sec
+            stimTime = currentNode.epochList.firstValue.protocolSettings('stimTime') / 1e3; %sec
+            preFrames = preTime * frameRate; %frames
+            frameDwell = currentNode.epochList.firstValue.protocolSettings('frameDwell'); %frames
+            prePoints = preTime * sampleRate; %data points
+            stimPoints = stimTime * sampleRate; %data points
+
+            saccadeTimes = measuredFrameTimes(preFrames+1 : frameDwell : end)';
+            tempInd = find(saccadeTimes > (prePoints + stimPoints));
+            saccadeTimes(tempInd+1 : end) = [];
             
-            centerStim = convertJavaArrayList(currentNode.epochList.firstValue.protocolSettings('centerNoiseArray'));
-            surroundStim = convertJavaArrayList(currentNode.epochList.firstValue.protocolSettings('surroundNoiseArray'));
+            fixationResponses = nan(3,length(saccadeTimes) - 1);
+            for ff = 1:(length(saccadeTimes) - 1)
+                tempStart = saccadeTimes(ff);
+                tempEnd = saccadeTimes(ff+1);
+                fixationResponses(1,ff) = chargeMult * trapz(centerResp.mean(tempStart:tempEnd)) / sampleRate; %pC
+                fixationResponses(2,ff) = chargeMult * trapz(surroundResp.mean(tempStart:tempEnd)) / sampleRate; %pC
+                fixationResponses(3,ff) = chargeMult * trapz(centerSurroundResp.mean(tempStart:tempEnd)) / sampleRate; %pC
+            end
             
-            centerStim_pt = centerStim;
-            surroundStim_pt = surroundStim;
-            
-            centerStim = [backgroundIntensity.* ones(1,prePts), kron(centerStim,ones(1,round(updateLength))), backgroundIntensity.* ones(1,prePts)];
-            surroundStim = [backgroundIntensity.* ones(1,prePts), kron(surroundStim,ones(1,round(updateLength))), backgroundIntensity.* ones(1,prePts)];
-            stimTimeVec = (1:length(centerStim)) / sampleRate;
+            linearDeviation = (fixationResponses(1,:) + fixationResponses(2,:)) - fixationResponses(3,:);
+            LinearDeviation(pp,correlationIndex) =  mean(linearDeviation); %#ok<FNDSB>
 
             if and(CorrelatedNoiseNode.custom.get('isExample'), ismember(currentCorrelationValue, [-1, 0, 1]))
+                %reconstruct noise stimuli:
+                backgroundIntensity = currentNode.epochList.firstValue.protocolSettings('backgroundIntensity');
+                sampleRate = currentNode.epochList.firstValue.protocolSettings('sampleRate');
+                prePts = sampleRate * currentNode.epochList.firstValue.protocolSettings('preTime') / 1e3;
+                frameDwell = currentNode.epochList.firstValue.protocolSettings('frameDwell');
+                lightCrafterFlag = currentNode.epochList.firstValue.protocolSettings.keySet.contains('background:LightCrafter Stage@localhost:lightCrafterPatternRate');
+                if ~lightCrafterFlag
+                    lightCrafterFlag = currentNode.epochList.firstValue.protocolSettings.keySet.contains('background:LightCrafter_Stage@localhost:lightCrafterPatternRate');
+                end
+                FMdata = (riekesuite.getResponseVector(currentNode.epochList.firstValue,'Frame Monitor'))';
+                frameTimes = getFrameTiming(FMdata,lightCrafterFlag);
+                updateLength = frameDwell*mean(diff(frameTimes));
+
+                centerStim = convertJavaArrayList(currentNode.epochList.firstValue.protocolSettings('centerNoiseArray'));
+                surroundStim = convertJavaArrayList(currentNode.epochList.firstValue.protocolSettings('surroundNoiseArray'));
+
+                centerStim_pt = centerStim;
+                surroundStim_pt = surroundStim;
+
+                centerStim = [backgroundIntensity.* ones(1,prePts), kron(centerStim,ones(1,round(updateLength))), backgroundIntensity.* ones(1,prePts)];
+                surroundStim = [backgroundIntensity.* ones(1,prePts), kron(surroundStim,ones(1,round(updateLength))), backgroundIntensity.* ones(1,prePts)];
+                stimTimeVec = (1:length(centerStim)) / sampleRate;
+                
                 if currentCorrelationValue == -1
                     figA = fig2; figB = fig5; figC = fig8;
                 elseif currentCorrelationValue == 0
@@ -120,10 +148,26 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
             end %eg cell plots
         end %for correlation values
         
-        addLineToAxis(correlationValues,meanLinearDeviation,['data', num2str(pp)],fig11,plotColor,'-','o')
-
     end %for cells
-
+    %population plots
+    %On cells:
+    onMat = LinearDeviation(ONcellInds,:);
+    nOn = sum(~isnan(onMat),1);
+    meanOn = nanmean(onMat,1);
+    errOn = nanstd(onMat,[],1) ./ sqrt(nOn);
+    addLineToAxis(correlationValues,meanOn,'meanOn',fig11,[0.7 0.7 0.7],'-','o')
+    addLineToAxis(correlationValues,meanOn + errOn,'errOnUp',fig11,[0.7 0.7 0.7],'--','none')
+    addLineToAxis(correlationValues,meanOn - errOn,'errOnDown',fig11,[0.7 0.7 0.7],'--','none')
+    
+    %Off cells:
+    offMat = LinearDeviation(OFFcellInds,:);
+    nOff = sum(~isnan(offMat),1);
+    meanOff = nanmean(offMat,1);
+    errOff = nanstd(offMat,[],1) ./ sqrt(nOff);
+    addLineToAxis(correlationValues,meanOff,'meanOff',fig11,'k','-','o')
+    addLineToAxis(correlationValues,meanOff + errOff,'errOffUp',fig11,'k','--','none')
+    addLineToAxis(correlationValues,meanOff - errOff,'errOffDown',fig11,'k','--','none')
+    
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
     if (exportFigs)
         figID = ['CScorr_respNeg_',recID];
