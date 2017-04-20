@@ -19,17 +19,17 @@ recordingSplit = @(list)splitOnRecKeyword(list);
 recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
 
 tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
-    recordingSplit_java,...
     'protocolSettings(stimulusIndex)',...
+    recordingSplit_java,...
     'protocolSettings(currentStimulus)'});
 gui = epochTreeGUI(tree);
 %% DOVES CS ADDITIVITY: analysis and figs
-% flag recType nodes in population, example nodes are stimulusIndex
+% flag stimulusIndex nodes in population, example nodes are stimulusIndex
 % select whole tree at root
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doDOVEScsAdditivityAnalysis(parentNode,...
-    'exportFigs',false);
+    'exportFigs',true);
 
 
 %% CENTER SURROUND NOISE: tree
