@@ -60,7 +60,7 @@ function doExcSpikesSurroundAnalysis(node,varargin)
         
         %fit linear RF area-summation models:
         params0 = [max(respAmps), 40, max(respAmps), 150];
-        [Kc,sigmaC,Ks,sigmaS] = fitDoGAreaSummation(spotSizes,respAmps,params0);
+        [Kc,sigmaC,Ks,sigmaS] = fitDoGAreaSummation(spotSizes,respAmps,params0)
         fitX = 0:max(spotSizes);
         fitY = DoGAreaSummation([Kc,sigmaC,Ks,sigmaS], fitX);
         [~, ind] = max(fitY); 

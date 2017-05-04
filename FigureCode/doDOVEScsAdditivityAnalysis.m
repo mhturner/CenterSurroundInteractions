@@ -152,6 +152,11 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
             xFit = [min(diff_exc), max(diff_exc)];
             yFit = polyval(p,xFit);
             addLineToAxis(xFit,yFit,['fit',num2str(pp),'_', num2str(currentNode.splitValue)],fig6,'k','-','none')
+            %corr stat for example cell:
+            [rho, pval] = corr(diff_exc',diff_spikes');
+            disp('Diff corr for e.g. cell')
+            disp([rho, pval])
+            
             
             %spikes traces:
             addLineToAxis(spikes_centerRes.timeVector,spikes_centerRes.mean,...
@@ -193,6 +198,7 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
             fh = figure(21); clf;
             imagesc(img'); colormap(gray); axis image; axis off; hold on;
             plot(FEMdata(currentNode.splitValue).eyeX,FEMdata(currentNode.splitValue).eyeY,'r')
+            brighten(0.6) %brighten for display purposes
             drawnow;
             figID = 'egNatImage_DOVES';
             print(fh,[figDir,figID],'-depsc')
@@ -205,6 +211,7 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
                 round(centerY - patchSize/2 + 1) : round(centerY + patchSize/2));
             fh = figure(22); clf;
             imagesc(imagePatch'); colormap(gray); axis image; axis off;
+            brighten(0.6) %brighten for display purposes
             drawnow;
             figID = 'egNatImagePatch_DOVES';
             print(fh,[figDir,figID],'-depsc')
@@ -233,18 +240,75 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
     end %end for population
     
     %spikes pop:
+    %   Off...
     addLineToAxis(meanVals.spikes.measured(OFFcellInds),meanVals.spikes.linsum(OFFcellInds),'OffData',fig7,'r','none','o')
+    meanOFF_x = mean(meanVals.spikes.measured(OFFcellInds));
+    meanOFF_y = mean(meanVals.spikes.linsum(OFFcellInds));
+    errOFF_x = std(meanVals.spikes.measured(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    errOFF_y = std(meanVals.spikes.linsum(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    addLineToAxis(meanOFF_x,meanOFF_y,'OffMean',fig7,'r','none','.')
+    addLineToAxis(meanOFF_x + [errOFF_x, -errOFF_x],[meanOFF_y meanOFF_y],'OffErrX',fig7,'r','-','none')
+    addLineToAxis([meanOFF_x, meanOFF_x],meanOFF_y + [errOFF_y, -errOFF_y],'OffErrY',fig7,'r','-','none')
+    
+    %   On...
     addLineToAxis(meanVals.spikes.measured(ONcellInds),meanVals.spikes.linsum(ONcellInds),'OnData',fig7,'b','none','o')
+    meanON_x = mean(meanVals.spikes.measured(ONcellInds));
+    meanON_y = mean(meanVals.spikes.linsum(ONcellInds));
+    errON_x = std(meanVals.spikes.measured(ONcellInds)) ./ sqrt(length(ONcellInds));
+    errON_y = std(meanVals.spikes.linsum(ONcellInds)) ./ sqrt(length(ONcellInds));
+    addLineToAxis(meanON_x,meanON_y,'OnMean',fig7,'b','none','.')
+    addLineToAxis(meanON_x + [errON_x, -errON_x],[meanON_y meanON_y],'OnErrX',fig7,'b','-','none')
+    addLineToAxis([meanON_x, meanON_x],meanON_y + [errON_y, -errON_y],'OnErrY',fig7,'b','-','none')
+    
+    %stat test. ON and OFF combined (probaby split later)
+    [~,p] = ttest(meanVals.spikes.measured, meanVals.spikes.linsum);
+    disp('Meas. vs LinSum, spikes, ON AND OFF:')
+    disp(['p = ',num2str(p)])
+
     upLim = max([meanVals.spikes.measured,meanVals.spikes.linsum]);
     addLineToAxis([0 upLim],[0 upLim],'unity',fig7,'k','--','none')
+    
     %exc pop:
+    %   Off...
     addLineToAxis(meanVals.exc.measured(OFFcellInds),meanVals.exc.linsum(OFFcellInds),'OffData',fig8,'r','none','o')
+    meanOFF_x = mean(meanVals.exc.measured(OFFcellInds));
+    meanOFF_y = mean(meanVals.exc.linsum(OFFcellInds));
+    errOFF_x = std(meanVals.exc.measured(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    errOFF_y = std(meanVals.exc.linsum(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    addLineToAxis(meanOFF_x,meanOFF_y,'OffMean',fig8,'r','none','.')
+    addLineToAxis(meanOFF_x + [errOFF_x, -errOFF_x],[meanOFF_y meanOFF_y],'OffErrX',fig8,'r','-','none')
+    addLineToAxis([meanOFF_x, meanOFF_x],meanOFF_y + [errOFF_y, -errOFF_y],'OffErrY',fig8,'r','-','none')
+    
+    %   On...
     addLineToAxis(meanVals.exc.measured(ONcellInds),meanVals.exc.linsum(ONcellInds),'OnData',fig8,'b','none','o')
+    meanON_x = mean(meanVals.exc.measured(ONcellInds));
+    meanON_y = mean(meanVals.exc.linsum(ONcellInds));
+    errON_x = std(meanVals.exc.measured(ONcellInds)) ./ sqrt(length(ONcellInds));
+    errON_y = std(meanVals.exc.linsum(ONcellInds)) ./ sqrt(length(ONcellInds));
+    addLineToAxis(meanON_x,meanON_y,'OnMean',fig8,'b','none','.')
+    addLineToAxis(meanON_x + [errON_x, -errON_x],[meanON_y meanON_y],'OnErrX',fig8,'b','-','none')
+    addLineToAxis([meanON_x, meanON_x],meanON_y + [errON_y, -errON_y],'OnErrY',fig8,'b','-','none')
+    
+    %stats:
+    [~,p] = ttest(meanVals.exc.measured, meanVals.exc.linsum);
+    disp('Meas. vs LinSum, exc, ON AND OFF:')
+    disp(['p = ',num2str(p)])
+    
     upLim = max([meanVals.exc.measured,meanVals.exc.linsum]);
     addLineToAxis([0 upLim],[0 upLim],'unity',fig8,'k','--','none')
+    
     %corr pop:
     addLineToAxis(ones(1,length(OFFcellInds)),diffCorrValues(OFFcellInds),'OffData',fig9,'r','none','o')
+    meanOFF = mean(diffCorrValues(OFFcellInds));
+    errOFF = std(diffCorrValues(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    addLineToAxis(1.2,meanOFF,'meanOff',fig9,'r','none','.')
+    addLineToAxis([1.2, 1.2],meanOFF + [errOFF -errOFF],'errOff',fig9,'r','-','none')
+        
     addLineToAxis(2.*ones(1,length(ONcellInds)),diffCorrValues(ONcellInds),'OnData',fig9,'b','none','o')
+    meanON = mean(diffCorrValues(ONcellInds));
+    errON = std(diffCorrValues(ONcellInds)) ./ sqrt(length(ONcellInds));
+    addLineToAxis(1.8,meanON,'meanOn',fig9,'b','none','.')
+    addLineToAxis([1.8, 1.8],meanON + [errON -errON],'errOn',fig9,'b','-','none')
     
     if (exportFigs)
         figID = ['DOVEScs_ind_extracellular'];

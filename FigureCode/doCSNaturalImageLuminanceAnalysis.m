@@ -201,7 +201,19 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                     'control',fig6,'k','none','o')
                 addLineToAxis(fixationResponses(6,egIndsToPull),...
                     fixationResponses(4,egIndsToPull)+fixationResponses(5,egIndsToPull),...
-                    'shuff',fig6,'r','none','o')
+                    'shuff',fig6,'g','none','o')
+                
+                    %e.g. cell stats:
+                [~,p] = ttest(fixationResponses(3,egIndsToPull),...
+                    fixationResponses(1,egIndsToPull)+fixationResponses(2,egIndsToPull));
+                disp('e.g. cell meas. vs. linSum, Control:')
+                disp(['p = ',num2str(p)])
+                
+                [~,p] = ttest(fixationResponses(6,egIndsToPull),...
+                    fixationResponses(4,egIndsToPull)+fixationResponses(5,egIndsToPull));
+                disp('e.g. cell meas. vs. linSum, Shuffled:')
+                disp(['p = ',num2str(p)])
+                
                 downLim = min([fixationResponses(6,egIndsToPull), fixationResponses(1,egIndsToPull)]);
                 upLim = max([fixationResponses(6,egIndsToPull), fixationResponses(1,egIndsToPull)]);
                 addLineToAxis([downLim upLim],[downLim upLim],'unity',fig6,'k','--','none')
@@ -305,10 +317,37 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
         meanDiff.shuffle(pp) = mean((fixationResponses(4,:) + fixationResponses(5,:)) - fixationResponses(6,:));
     end
     
+    %Population data:
+    %   On...
     addLineToAxis(meanDiff.control(ONcellInds),meanDiff.shuffle(ONcellInds),...
         'ONcells',fig7,'b','none','o')
+    meanON_x = mean(meanDiff.control(ONcellInds));
+    meanON_y = mean(meanDiff.shuffle(ONcellInds));
+    errON_x = std(meanDiff.control(ONcellInds)) ./ sqrt(length(ONcellInds));
+    errON_y = std(meanDiff.shuffle(ONcellInds)) ./ sqrt(length(ONcellInds));
+    addLineToAxis(meanON_x,meanON_y,'ONmean',fig7,'b','none','.')
+    addLineToAxis(meanON_x + [errON_x, -errON_x],[meanON_y meanON_y],'ONerr_x',fig7,'b','-','none')
+    addLineToAxis([meanON_x meanON_x],meanON_y + [errON_y, -errON_y],'ONerr_y',fig7,'b','-','none')
+    %       pop stats:
+    [~,p] = ttest(meanDiff.control(ONcellInds),meanDiff.shuffle(ONcellInds));
+    disp('Control vs. shuffled On:')
+    disp(['p = ',num2str(p)])
+    
+    %   Off...
     addLineToAxis(meanDiff.control(OFFcellInds),meanDiff.shuffle(OFFcellInds),...
         'OFFcells',fig7,'r','none','o')
+    meanOFF_x = mean(meanDiff.control(OFFcellInds));
+    meanOFF_y = mean(meanDiff.shuffle(OFFcellInds));
+    errOFF_x = std(meanDiff.control(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    errOFF_y = std(meanDiff.shuffle(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    addLineToAxis(meanOFF_x,meanOFF_y,'OFFmean',fig7,'r','none','.')
+    addLineToAxis(meanOFF_x + [errOFF_x, -errOFF_x],[meanOFF_y meanOFF_y],'OFFerr_x',fig7,'r','-','none')
+    addLineToAxis([meanOFF_x meanOFF_x],meanOFF_y + [errOFF_y, -errOFF_y],'OFFerr_y',fig7,'r','-','none')
+    %       pop stats:
+    [~,p] = ttest(meanDiff.control(OFFcellInds),meanDiff.shuffle(OFFcellInds));
+    disp('Control vs. shuffled Off:')
+    disp(['p = ',num2str(p)])
+    
     downLim = min([meanDiff.control, meanDiff.shuffle, 0]);
     upLim = 1.1*max([meanDiff.control, meanDiff.shuffle]);
     addLineToAxis([downLim upLim],[downLim upLim],'unity',fig7,'k','--','none')

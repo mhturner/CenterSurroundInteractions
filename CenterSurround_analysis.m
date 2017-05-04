@@ -149,7 +149,7 @@ gui = epochTreeGUI(tree);
 %       Flag and example at spotIntensity. Select cell type
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
-doExcSpikesSurroundAnalysis(parentNode,'metric','integrated','exportFigs',true);
+doExcSpikesSurroundAnalysis(parentNode,'metric','integrated','exportFigs',false);
 %% LINEAR EQUIVALENT DISC MOD SURROUND: tree
 list = loader.loadEpochList([dataFolder,'LinearEquivalentDiscModSurround.mat'],dataFolder);
 

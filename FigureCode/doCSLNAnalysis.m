@@ -654,18 +654,66 @@ function doCSLNAnalysis(node,varargin)
 
     end
     
+    %Population data, indep vs. shared:
+    %   On...
     addLineToAxis(rSquaredValues.indep(ONcellInds),rSquaredValues.shared(ONcellInds),...
         'ONr2',fig5,'b','none','o')
+    meanON_x = mean(rSquaredValues.indep(ONcellInds));
+    meanON_y = mean(rSquaredValues.shared(ONcellInds));
+    errON_x = std(rSquaredValues.indep(ONcellInds)) ./ sqrt(length(ONcellInds));
+    errON_y = std(rSquaredValues.shared(ONcellInds)) ./ sqrt(length(ONcellInds));
+    addLineToAxis(meanON_x,meanON_y,'ONmean',fig5,'b','none','.')
+    addLineToAxis(meanON_x + [errON_x, -errON_x],[meanON_y, meanON_y],'ONerr_x',fig5,'b','-','none')
+    addLineToAxis([meanON_x, meanON_x],meanON_y + [errON_y, -errON_y],'ONerr_y',fig5,'b','-','none')
+    [~,p] = ttest(rSquaredValues.indep(ONcellInds), rSquaredValues.shared(ONcellInds));
+    disp('Shared vs. Indep. On:')
+    disp(['p = ',num2str(p)])
+    
+    %   Off...
     addLineToAxis(rSquaredValues.indep(OFFcellInds),rSquaredValues.shared(OFFcellInds),...
         'OFFr2',fig5,'r','none','o')
+    meanOFF_x = mean(rSquaredValues.indep(OFFcellInds));
+    meanOFF_y = mean(rSquaredValues.shared(OFFcellInds));
+    errOFF_x = std(rSquaredValues.indep(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    errOFF_y = std(rSquaredValues.shared(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    addLineToAxis(meanOFF_x,meanOFF_y,'OFFmean',fig5,'r','none','.')
+    addLineToAxis(meanOFF_x + [errOFF_x, -errOFF_x],[meanOFF_y, meanOFF_y],'OFFerr_x',fig5,'r','-','none')
+    addLineToAxis([meanOFF_x, meanOFF_x],meanOFF_y + [errOFF_y, -errOFF_y],'OFFerr_y',fig5,'r','-','none')
+    [~, p] = ttest(rSquaredValues.indep(OFFcellInds), rSquaredValues.shared(OFFcellInds));
+    disp('Shared vs. Indep. Off:')
+    disp(['p = ',num2str(p)])
+    
     addLineToAxis([0 1],[0 1],...
         'unity',fig5,'k','--','none')
-    disp(rSquaredValues);
-    
+
+    %Population data, threeNL (stacked) vs. shared:
+    %   On...
     addLineToAxis(rSquaredValues.threeNL(ONcellInds),rSquaredValues.shared(ONcellInds),...
         'ONr2',fig10,'b','none','o')
+    meanON_x = mean(rSquaredValues.threeNL(ONcellInds));
+    meanON_y = mean(rSquaredValues.shared(ONcellInds));
+    errON_x = std(rSquaredValues.threeNL(ONcellInds)) ./ sqrt(length(ONcellInds));
+    errON_y = std(rSquaredValues.shared(ONcellInds)) ./ sqrt(length(ONcellInds));
+    addLineToAxis(meanON_x,meanON_y,'ONmean',fig10,'b','none','.')
+    addLineToAxis(meanON_x + [errON_x, -errON_x],[meanON_y, meanON_y],'ONerr_x',fig10,'b','-','none')
+    addLineToAxis([meanON_x, meanON_x],meanON_y + [errON_y, -errON_y],'ONerr_y',fig10,'b','-','none')
+    [~, p] = ttest(rSquaredValues.threeNL(ONcellInds), rSquaredValues.shared(ONcellInds));
+    disp('Shared vs. ThreeNL On:')
+    disp(['p = ',num2str(p)])
+    
     addLineToAxis(rSquaredValues.threeNL(OFFcellInds),rSquaredValues.shared(OFFcellInds),...
         'OFFr2',fig10,'r','none','o')
+    meanOFF_x = mean(rSquaredValues.threeNL(OFFcellInds));
+    meanOFF_y = mean(rSquaredValues.shared(OFFcellInds));
+    errOFF_x = std(rSquaredValues.threeNL(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    errOFF_y = std(rSquaredValues.shared(OFFcellInds)) ./ sqrt(length(OFFcellInds));
+    addLineToAxis(meanOFF_x,meanOFF_y,'OFFmean',fig10,'r','none','.')
+    addLineToAxis(meanOFF_x + [errOFF_x, -errOFF_x],[meanOFF_y, meanOFF_y],'OFFerr_x',fig10,'r','-','none')
+    addLineToAxis([meanOFF_x, meanOFF_x],meanOFF_y + [errOFF_y, -errOFF_y],'OFFerr_y',fig10,'r','-','none')
+    [~, p] = ttest(rSquaredValues.threeNL(OFFcellInds), rSquaredValues.shared(OFFcellInds));
+    disp('Shared vs. ThreeNL Off:')
+    disp(['p = ',num2str(p)])
+    
     addLineToAxis([0 1],[0 1],...
         'unity',fig10,'k','--','none')
     
@@ -682,6 +730,7 @@ function doCSLNAnalysis(node,varargin)
         'oneLine',fig16,'k','--','none')
     
     [rho, pval] = corr(relativeSurroundWeight,relativeImprovement');
+    disp('Surr. weight corr with improvement:')
     disp([rho, pval])
     
     save([figDir, 'diffHeatMaps.mat'],'diffHeatMaps','ONcellInds','OFFcellInds');
