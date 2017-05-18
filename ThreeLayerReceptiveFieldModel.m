@@ -26,7 +26,7 @@ classdef ThreeLayerReceptiveFieldModel < handle
     
     methods
         
-        function responseStructure = getResponse(obj,stimulusMatrix)
+        function responseStructure = getResponse(obj,stimulusMatrix,dense)
             if isempty(obj.convolutionFilter)
                error('Initialize model with makeRfComponents')
             end
@@ -73,22 +73,24 @@ classdef ThreeLayerReceptiveFieldModel < handle
             responseStructure.CenterSurround_SharedNonlinearity =...
                 sum(subunitOutputs.* obj.sampleWeights.Center);
             
-            % 6) Surround subunit output is rectified, then combined with
-            % center subunits before passing thru a shared nlinearity
-            % (LNLN)
-            SurroundInputToEachSubunit = ...
-                max(0,obj.sampleWeights.SubunitWeightMatrix * obj.SubunitActivation.SurroundSubunits);
-            subunitActivation = obj.SubunitActivation.CenterSubunits - SurroundInputToEachSubunit;
-            subunitOutputs = subunitActivation;
-            subunitOutputs(subunitOutputs < 0) = 0; %rectify subunit outputs
-            responseStructure.CenterSurround_LNLN =...
-                sum(subunitOutputs.* obj.sampleWeights.Center);
-            
-            % 7) Nonlinear subunit center plus an additive, spatially
-            % linear surround that gets added after subunit output. Then
-            % output nonlinearity
-            responseStructure.CenterSurround_NonlinearCenterPlusIndependentLinearSurround = ...
-                max(0,responseStructure.CenterOnly_NonlinearSubunits - LinearSurroundActivation);
+            if (dense)
+                % 6) Surround subunit output is rectified, then combined with
+                % center subunits before passing thru a shared nlinearity
+                % (LNLN)
+                SurroundInputToEachSubunit = ...
+                    max(0,obj.sampleWeights.SubunitWeightMatrix * obj.SubunitActivation.SurroundSubunits);
+                subunitActivation = obj.SubunitActivation.CenterSubunits - SurroundInputToEachSubunit;
+                subunitOutputs = subunitActivation;
+                subunitOutputs(subunitOutputs < 0) = 0; %rectify subunit outputs
+                responseStructure.CenterSurround_LNLN =...
+                    sum(subunitOutputs.* obj.sampleWeights.Center);
+            end
+
+                % 7) Nonlinear subunit center plus an additive, spatially
+                % linear surround that gets added after subunit output. Then
+                % output nonlinearity
+                responseStructure.CenterSurround_NonlinearCenterPlusIndependentLinearSurround = ...
+                    max(0,responseStructure.CenterOnly_NonlinearSubunits - LinearSurroundActivation);
 
         end
         

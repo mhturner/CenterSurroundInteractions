@@ -261,8 +261,12 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
     addLineToAxis([meanON_x, meanON_x],meanON_y + [errON_y, -errON_y],'OnErrY',fig7,'b','-','none')
     
     %stat test. ON and OFF combined (probaby split later)
-    [~,p] = ttest(meanVals.spikes.measured, meanVals.spikes.linsum);
-    disp('Meas. vs LinSum, spikes, ON AND OFF:')
+    [~,p] = ttest(meanVals.spikes.measured(OFFcellInds), meanVals.spikes.linsum(OFFcellInds));
+    disp('Meas. vs LinSum, spikes, OFF:')
+    disp(['p = ',num2str(p)])
+    
+    [~,p] = ttest(meanVals.spikes.measured(ONcellInds), meanVals.spikes.linsum(ONcellInds));
+    disp('Meas. vs LinSum, spikes, ON:')
     disp(['p = ',num2str(p)])
 
     upLim = max([meanVals.spikes.measured,meanVals.spikes.linsum]);
@@ -290,8 +294,12 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
     addLineToAxis([meanON_x, meanON_x],meanON_y + [errON_y, -errON_y],'OnErrY',fig8,'b','-','none')
     
     %stats:
-    [~,p] = ttest(meanVals.exc.measured, meanVals.exc.linsum);
-    disp('Meas. vs LinSum, exc, ON AND OFF:')
+    [~,p] = ttest(meanVals.exc.measured(OFFcellInds), meanVals.exc.linsum(OFFcellInds));
+    disp('Meas. vs LinSum, exc, OFF:')
+    disp(['p = ',num2str(p)])
+    
+    [~,p] = ttest(meanVals.exc.measured(ONcellInds), meanVals.exc.linsum(ONcellInds));
+    disp('Meas. vs LinSum, exc, ON:')
     disp(['p = ',num2str(p)])
     
     upLim = max([meanVals.exc.measured,meanVals.exc.linsum]);
