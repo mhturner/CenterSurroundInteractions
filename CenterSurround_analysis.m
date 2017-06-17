@@ -64,13 +64,14 @@ gui = epochTreeGUI(tree);
 %% CENTER SURROUND NOISE: cascade model plotting
 % flag recType nodes in population, example nodes are useRandomSeed = 1
 % select tree node (does ON & OFF in pop analysis together)
+% eg Off is 20161129Ec1
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doCSLNAnalysis(parentNode,...
     'bins2D',15^2,... 
     'bins1D',20,...
     'exportFigs',true,...
-    'convertToConductance',true,...
+    'convertToConductance',false,...
     'fitWithEquallyPopulatedBins',true);
 
 %% CS NATURAL IMAGE LUMINANCE: tree
@@ -180,6 +181,7 @@ parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDModSurroundAnalysis(parentNode,...
     'metric','integrated','figureID','OFFspk');
 
+% 
 %% FLASHED GRATING MOD SURROUND: tree
 list = loader.loadEpochList([dataFolder,'FlashedGratingModSurround.mat'],dataFolder);
 
@@ -208,6 +210,40 @@ clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doFlashedGratingModSurroundAnalysis(parentNode,...
     'metric','integrated','exportFigs',true);
+
+
+%% LINEAR EQUIVALENT DISC MIXED SURROUND: tree
+list = loader.loadEpochList([dataFolder,'LEDMixedSurround.mat'],dataFolder);
+
+recordingSplit = @(list)splitOnRecKeyword(list);
+recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, recordingSplit);
+
+cellTypeSplit = @(list)splitOnCellType(list);
+cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
+
+locationSplit = @(list)splitOnJavaArrayList(list,'centerPatchLocation');
+locationSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, locationSplit);
+
+surroundSplit = @(list)splitOnJavaArrayList(list,'currentSurroundLocation');
+surroundSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, surroundSplit);
+
+tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
+    recordingSplit_java,...
+    'protocolSettings(imageName)',...
+    locationSplit_java,...
+    surroundSplit_java,...
+    'protocolSettings(stimulusTag)'});
+
+gui = epochTreeGUI(tree);
+
+%% LINEAR EQUIVALENT DISC MIXED SURROUND: analysis
+% flag recType nodes, set patch location as examples
+% select cell type as parentNode
+
+clc; CloseAllFiguresExceptGUI();
+parentNode = gui.getSelectedEpochTreeNodes{1};
+doLEDMixedSurroundAnalysis(parentNode,...
+    'metric','integrated');
 
 %% CONTRAST RESPONSE SPOTS: tree
 

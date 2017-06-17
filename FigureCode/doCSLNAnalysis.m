@@ -510,6 +510,12 @@ function doCSLNAnalysis(node,varargin)
             
 % % % % % % % % MODEL-FREE: SLICES THRU RESPONSE MATRIX % % % % % % % % % % % % % % %
         if currentNode.custom.get('isExample')
+            
+            % FLIPPING OVER AXIS!!! % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % %
+            responseMean = -responseMean;
+            centerGS = -centerGS;
+            surroundGS = -surroundGS;
+            
             % Slices thru 2d nonlinearity
             colors = pmkmp(length(centerGS));
             for ii = 1:length(centerGS)
@@ -533,9 +539,9 @@ function doCSLNAnalysis(node,varargin)
             
             % write out to csv for igor..
             [tempCC, tempSS] = meshgrid(centerGS,surroundGS);
-%             csvwrite([figDir, 'Layer1.csv'],tempCC);
-%             csvwrite([figDir, 'Layer2.csv'],tempSS);
-%             csvwrite([figDir, 'Layer3.csv'],responseMean);
+            csvwrite([figDir, 'Layer1.csv'],tempCC);
+            csvwrite([figDir, 'Layer2.csv'],tempSS);
+            csvwrite([figDir, 'Layer3.csv'],responseMean);
 
 
             save([figDir, 'Layer1.mat'],'tempCC');

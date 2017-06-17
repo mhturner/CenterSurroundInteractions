@@ -104,6 +104,25 @@ function doLEDModSurroundAnalysis(node,varargin)
     set(get(fig11,'YLabel'),'String','Time to first spike (ms)')
     set(gcf, 'WindowStyle', 'docked')
     
+    %KNN discrim. pCorrect vs surround contrast
+    figure; clf;
+    fig12=gca;
+    set(fig12,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig12,'XLabel'),'String','Surround contrast')
+    set(get(fig12,'YLabel'),'String','pCorrect(Image vs. Disc)')
+    set(gcf, 'WindowStyle', 'docked')
+    
+    %KNN discrim. pCorrect vs coding scheme, natural and no surrounds
+    figure; clf;
+    fig13=gca;
+    set(fig13,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig13,'XLabel'),'String','[scheme]')
+    set(get(fig13,'YLabel'),'String','pCorrect(Image vs. Disc)')
+    set(gcf, 'WindowStyle', 'docked')
+    
+    
     populationNodes = {};
     ct = 0;
     for nn = 1:node.descendentsDepthFirst.length
@@ -122,6 +141,15 @@ function doLEDModSurroundAnalysis(node,varargin)
     timeToFirstSpike.image = [];
     timeToFirstSpike.disc = [];
     
+    runningPCorrect.timingCode05 = [];
+    runningPCorrect.timingCode10 = [];
+    runningPCorrect.timingCode20 = [];
+    runningPCorrect.timingCode40 = [];
+    runningPCorrect.timingCode80 = [];
+    runningPCorrect.countCode = [];
+    
+    pCorrect_natural = [];
+    
     patchCt = 0;
     for pp = 1:length(populationNodes)
         cellNode = populationNodes{pp};
@@ -138,8 +166,13 @@ function doLEDModSurroundAnalysis(node,varargin)
             imageResponseMatrix.image.err = nan(noPatches,noSurrounds-1);
             imageResponseMatrix.disc.mean = nan(noPatches,noSurrounds-1);
             imageResponseMatrix.disc.err = nan(noPatches,noSurrounds-1);
-            
-            
+            pCorrect.timingCode05 = nan(noPatches,noSurrounds-1);
+            pCorrect.timingCode10 = nan(noPatches,noSurrounds-1);
+            pCorrect.timingCode20 = nan(noPatches,noSurrounds-1);
+            pCorrect.timingCode40 = nan(noPatches,noSurrounds-1);
+            pCorrect.timingCode80 = nan(noPatches,noSurrounds-1);
+            pCorrect.countCode = nan(noPatches,noSurrounds-1);
+
             surroundContrastValues = nan(noPatches,noSurrounds-1);
             for ll = 1:noPatches
                 patchCt = patchCt + 1;
@@ -147,7 +180,8 @@ function doLEDModSurroundAnalysis(node,varargin)
                 parameterizedSurroundContrasts = convertJavaArrayList(...
                     patchNode.epochList.firstValue.protocolSettings('surroundContrast'));
                 NLIvalues.paramSurrounds = cat(1,NLIvalues.paramSurrounds, nan(1,9));
-                RespDiff.paramSurrounds = cat(1,RespDiff.paramSurrounds, nan(1,9)); 
+                RespDiff.paramSurrounds = cat(1,RespDiff.paramSurrounds, nan(1,9));
+                
                 for ss = 1:noSurrounds
                     currentSurroundContrast = patchNode.children(ss).splitValue;
 
@@ -158,9 +192,31 @@ function doLEDModSurroundAnalysis(node,varargin)
                     newNLIvalue =  newDiff ./ ...
                            (abs(imageResp.(metric).mean) + abs(discResp.(metric).mean));
                        
-                   
-                                          
-                    if ismember(currentSurroundContrast,parameterizedSurroundContrasts)
+                    %For spike rec: time to first spike and kNN stuff.
+                    sampleRate = imageNode.epochList.firstValue.protocolSettings('sampleRate');
+                    startPts = (imageNode.epochList.firstValue.protocolSettings('preTime') / 1e3) * sampleRate;
+                    endPts = (imageNode.epochList.firstValue.protocolSettings('stimTime') / 1e3) * sampleRate + startPts;
+                    if strcmp(recType,'extracellular')
+                        imageTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('image').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
+                        discTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('intensity').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
+                        tempImageTime = [];
+                        for tt = 1:size(imageTrace.binary,1)
+                            firstSpike = (find(imageTrace.binary(tt,startPts:endPts),1) / sampleRate) * 1e3;
+                            tempImageTime = cat(2,tempImageTime,firstSpike);
+                        end
+                        tempDiscTime = [];
+                        for tt = 1:size(discTrace.binary,1)
+                            firstSpike = (find(discTrace.binary(tt,startPts:endPts),1) / sampleRate) * 1e3;
+                            tempDiscTime = cat(2,tempDiscTime,firstSpike);
+                        end
+                        %kNN observations:
+                        inputObservations = cell(1,2);
+                        inputObservations{1} = imageTrace.binary(:,startPts:endPts);
+                        inputObservations{2} = discTrace.binary(:,startPts:endPts);
+                        NumNeighbors = 3;
+                    end
+            
+                    if ismember(currentSurroundContrast,parameterizedSurroundContrasts) %non-natural, param surround
                        putInd = find(currentSurroundContrast==parameterizedSurroundContrasts);
                        NLIvalues.paramSurrounds(patchCt,putInd) = newNLIvalue;
                        RespDiff.paramSurrounds(patchCt,putInd) = newDiff;
@@ -172,30 +228,97 @@ function doLEDModSurroundAnalysis(node,varargin)
                        imageResponseMatrix.disc.err(ll,putInd) = discResp.(metric).SEM;
                        surroundContrastValues(ll,putInd) = currentSurroundContrast;
                        
-                        %time to first spike
-                        sampleRate = imageNode.epochList.firstValue.protocolSettings('sampleRate');
-                        startPts = (imageNode.epochList.firstValue.protocolSettings('preTime') / 1e3) * sampleRate;
-                        endPts = (imageNode.epochList.firstValue.protocolSettings('stimTime') / 1e3) * sampleRate + startPts;
-                        if strcmp(recType,'extracellular')
-                            imageTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('image').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
-                            discTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('intensity').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
-                            tempImageTime = [];
-                            for tt = 1:size(imageTrace.binary,1)
-                                firstSpike = (find(imageTrace.binary(tt,startPts:endPts),1) / sampleRate) * 1e3;
-                                tempImageTime = cat(2,tempImageTime,firstSpike);
-                            end
-                            tempDiscTime = [];
-                            for tt = 1:size(discTrace.binary,1)
-                                firstSpike = (find(discTrace.binary(tt,startPts:endPts),1) / sampleRate) * 1e3;
-                                tempDiscTime = cat(2,tempDiscTime,firstSpike);
-                            end
-                            
-                            timeToFirstSpike.image(patchCt,putInd) = median(tempImageTime);
-                            timeToFirstSpike.disc(patchCt,putInd) = median(tempDiscTime);
-                        end
-                    else
-                       NLIvalues.naturalSurround(patchCt) = newNLIvalue;
-                       resp_natSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
+                        %spike timing matters:
+                        %5 msec - 
+                        precision=5; %msec
+                        precision=precision*10; %datapoints
+                        q_cost=2/precision;
+                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect.timingCode05(ll,putInd) = res_timing.pCorrect;
+
+                        %10 msec - 
+                        precision=10; %msec
+                        precision=precision*10; %datapoints
+                        q_cost=2/precision;
+                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect.timingCode10(ll,putInd) = res_timing.pCorrect;
+
+                        %20 msec - 
+                        precision=20; %msec
+                        precision=precision*10; %datapoints
+                        q_cost=2/precision;
+                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect.timingCode20(ll,putInd) = res_timing.pCorrect;
+
+                        %40 msec - 
+                        precision=40; %msec
+                        precision=precision*10; %datapoints
+                        q_cost=2/precision;
+                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect.timingCode40(ll,putInd) = res_timing.pCorrect;
+
+                        %80 msec - 
+                        precision=80; %msec
+                        precision=precision*10; %datapoints
+                        q_cost=2/precision;
+                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect.timingCode80(ll,putInd) = res_timing.pCorrect;
+
+                        %just spike count:
+                        q_cost=0; %free to move spikes. i.e. spike count code
+                        res_count = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect.countCode(ll,putInd) = res_count.pCorrect;
+
+                        timeToFirstSpike.image(patchCt,putInd) = median(tempImageTime);
+                        timeToFirstSpike.disc(patchCt,putInd) = median(tempDiscTime);
+                    else %natural surround
+                        NLIvalues.naturalSurround(patchCt) = newNLIvalue;
+                        resp_natSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
+                        
+                        %just spike count:
+                        q_cost=0; %free to move spikes. i.e. spike count code
+                        res_count = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect_natural(patchCt,1) = res_count.pCorrect;
+                       
+                        %spike timing matters:
+                        %5 msec - 
+                        precision=5; %msec
+                        precision=precision*10; %datapoints
+                        q_cost=2/precision;
+                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect_natural(patchCt,2) = res_timing.pCorrect;
+
+                        %10 msec - 
+                        precision=10; %msec
+                        precision=precision*10; %datapoints
+                        q_cost=2/precision;
+                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect_natural(patchCt,3) = res_timing.pCorrect;
+
+                        %20 msec - 
+                        precision=20; %msec
+                        precision=precision*10; %datapoints
+                        q_cost=2/precision;
+                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect_natural(patchCt,4) = res_timing.pCorrect;
+
+                        %40 msec - 
+                        precision=40; %msec
+                        precision=precision*10; %datapoints
+                        q_cost=2/precision;
+                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect_natural(patchCt,5) = res_timing.pCorrect;
+
+                        %80 msec - 
+                        precision=80; %msec
+                        precision=precision*10; %datapoints
+                        q_cost=2/precision;
+                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+                        pCorrect_natural(patchCt,6) = res_timing.pCorrect;
+
+                        timeToFirstSpike.image(patchCt,putInd) = median(tempImageTime);
+                        timeToFirstSpike.disc(patchCt,putInd) = median(tempDiscTime);
+                       
                     end
                     if currentSurroundContrast == 0
                        resp_noSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
@@ -262,6 +385,13 @@ function doLEDModSurroundAnalysis(node,varargin)
                 end %if example plotting
             end %for patch location
         
+            runningPCorrect.timingCode05 = cat(1,runningPCorrect.timingCode05,pCorrect.timingCode05);
+            runningPCorrect.timingCode10 = cat(1,runningPCorrect.timingCode10,pCorrect.timingCode10);
+            runningPCorrect.timingCode20 = cat(1,runningPCorrect.timingCode20,pCorrect.timingCode20);
+            runningPCorrect.timingCode40 = cat(1,runningPCorrect.timingCode40,pCorrect.timingCode40);
+            runningPCorrect.timingCode80 = cat(1,runningPCorrect.timingCode80,pCorrect.timingCode80);
+            runningPCorrect.countCode = cat(1,runningPCorrect.countCode,pCorrect.countCode);
+
         end %for image
 
     end %for cell
@@ -269,6 +399,56 @@ function doLEDModSurroundAnalysis(node,varargin)
     disp([num2str(length(NLIvalues.naturalSurround)), ' patches'])
     disp([num2str(pp), ' cells'])
     
+    %param surrounds pCorrect:
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.countCode),'count',fig12,'k','-','.')
+        tempErr = std(runningPCorrect.countCode,[],1) ./ sqrt(size(runningPCorrect.countCode,1));
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.countCode) + tempErr,'counteUp',fig12,'k','--','none')
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.countCode) - tempErr,'counteDown',fig12,'k','--','none')
+
+        noLines = 5;
+        cMat = [linspace(0,0.6,noLines)',linspace(0,0.6,noLines)',0.6*ones(noLines,1)];
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode05),'timing05',fig12,cMat(5,:),'-','.')
+        tempErr = std(runningPCorrect.timingCode05,[],1) ./ sqrt(size(runningPCorrect.timingCode05,1));
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode05) + tempErr,'timing05eUp',fig12,cMat(5,:),'--','none')
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode05) - tempErr,'timing05eDown',fig12,cMat(5,:),'--','none')
+
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode10),'timing10',fig12,cMat(4,:),'-','.')
+        tempErr = std(runningPCorrect.timingCode10,[],1) ./ sqrt(size(runningPCorrect.timingCode10,1));
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode10) + tempErr,'timing10eUp',fig12,cMat(4,:),'--','none')
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode10) - tempErr,'timing10eDown',fig12,cMat(4,:),'--','none')
+
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode20),'timing20',fig12,cMat(3,:),'-','.')
+        tempErr = std(runningPCorrect.timingCode20,[],1) ./ sqrt(size(runningPCorrect.timingCode20,1));
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode20) + tempErr,'timing20eUp',fig12,cMat(3,:),'--','none')
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode20) - tempErr,'timing20eDown',fig12,cMat(3,:),'--','none')
+
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode40),'timing40',fig12,cMat(2,:),'-','.')
+        tempErr = std(runningPCorrect.timingCode40,[],1) ./ sqrt(size(runningPCorrect.timingCode40,1));
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode40) + tempErr,'timing40eUp',fig12,cMat(2,:),'--','none')
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.timingCode40) - tempErr,'timing40eDown',fig12,cMat(2,:),'--','none')
+
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.countCode),'count',fig12,'k','-','.')
+        tempErr = std(runningPCorrect.countCode,[],1) ./ sqrt(size(runningPCorrect.countCode,1));
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.countCode) + tempErr,'counteUp',fig12,'k','--','none')
+        addLineToAxis(parameterizedSurroundContrasts,mean(runningPCorrect.countCode) - tempErr,'counteDown',fig12,'k','--','none')
+
+    %pCorrect vs coding scheme
+    %Nat. surround:
+    addLineToAxis(1:6,mean(pCorrect_natural),'meanNat',fig13,'k','-','o')
+    tempErr = std(pCorrect_natural,[],1) ./ sqrt(size(pCorrect_natural,1));
+    addLineToAxis(1:6,mean(pCorrect_natural) + tempErr,'NatErrUp',fig13,'k','--','none')
+    addLineToAxis(1:6,mean(pCorrect_natural) - tempErr,'NatErrDown',fig13,'k','--','none')
+    
+    %No surround:
+    pCorrect_noSurround = [runningPCorrect.countCode(:,5),runningPCorrect.timingCode05(:,5),...
+        runningPCorrect.timingCode10(:,5),runningPCorrect.timingCode20(:,5),...
+        runningPCorrect.timingCode40(:,5),runningPCorrect.timingCode80(:,5)];
+    
+    addLineToAxis(1:6,mean(pCorrect_noSurround),'meanNull',fig13,'r','-','o')
+    tempErr = std(pCorrect_noSurround,[],1) ./ sqrt(size(pCorrect_noSurround,1));
+    addLineToAxis(1:6,mean(pCorrect_noSurround) + tempErr,'NullErrUp',fig13,'r','--','none')
+    addLineToAxis(1:6,mean(pCorrect_noSurround) - tempErr,'NullErrDown',fig13,'r','--','none')
+        
     % pop. NLI vs. surround contrast:
     tempMean = mean(NLIvalues.paramSurrounds,1);
     tempErr = std(NLIvalues.paramSurrounds,[],1) ./ sqrt(size(NLIvalues.paramSurrounds,1));
@@ -356,6 +536,12 @@ function doLEDModSurroundAnalysis(node,varargin)
             
             figID = 'LEDmodS_firstSpike';
             makeAxisStruct(fig11,figID ,'RFSurroundFigs')
+            
+            figID = 'LEDmodS_KNN_pCorr';
+            makeAxisStruct(fig12,figID ,'RFSurroundFigs')
+            
+            figID = 'LEDmodS_KNN_natSurr';
+            makeAxisStruct(fig13,figID ,'RFSurroundFigs')
         end
     end
 end
