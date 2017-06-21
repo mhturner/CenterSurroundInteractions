@@ -1,6 +1,6 @@
 clear all; close all; clc;
 
-stimInd = 1; %image to use
+stimInd = 55; %stim to use, up to 74
 noPatches = 5000;
 micronsPerPixel = 6.6;
 
@@ -240,7 +240,7 @@ for pp = 1:noPatches
 end
 toc;
 
-save(['ImageDiscModelResults_',num2str(stimInd),'_20170616.mat'],'stimulus','response')
+save(['ImageDiscModelResults_',num2str(stimInd),'_20170619.mat'],'stimulus','response')
 
 %%
 
@@ -292,6 +292,6 @@ binCtrs = ctr(1:end-1) + diff(ctr);
 addLineToAxis(binCtrs,nn./sum(nn),'mixSurround',fig2,'r','-','none')
 
 figID = 'MixedSurModel_NLIhist';
-makeAxisStruct(fig2,figID ,'RFSurroundFigs')
+% makeAxisStruct(fig2,figID ,'RFSurroundFigs')
 
 
