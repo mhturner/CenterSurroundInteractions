@@ -68,16 +68,24 @@ function doLEDMixedSurroundAnalysis(node,varargin)
         end % for image ID
     end % for cell in pop
     
+    NLI_rand = mean(NLIresultsMatrix(:,3:end),2);
+    NLI_nat = NLIresultsMatrix(:,2);
+    NLI_no = NLIresultsMatrix(:,1);
     
+    figure(9); clf;
+    subplot(221); plot(NLI_no,NLI_nat,'go'); hold on; plot([0 1],[0 1],'k--')
+    subplot(222); plot(NLI_no,NLI_rand,'ro'); hold on; plot([0 1],[0 1],'k--')
+    subplot(223); plot(NLI_nat,NLI_rand,'ko'); hold on; plot([0 1],[0 1],'k--')
 
     figure(10); clf; 
     hold on;
 
-    noPatches = 6;
+    noPatches = size(NLIresultsMatrix,1);
+    noRandSurrounds = size(NLIresultsMatrix,2) - 2;
     colors = pmkmp(noPatches);
     for patchInd = 1:noPatches
         tempNatSurround = NLIresultsMatrix(patchInd,1);
-        plot(repmat(tempNatSurround,1,8),NLIresultsMatrix(patchInd,3:end),...
+        plot(repmat(tempNatSurround,1,noRandSurrounds),NLIresultsMatrix(patchInd,3:end),...
             'Color',colors(patchInd,:),'Marker','o','LineStyle','none')
         
         plot(NLIresultsMatrix(patchInd,1),NLIresultsMatrix(patchInd,2),...

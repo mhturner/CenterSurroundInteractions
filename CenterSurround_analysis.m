@@ -98,6 +98,7 @@ gui = epochTreeGUI(tree);
 % flag recType nodes in population, example nodes are at imageIndex (under
 %           CSNaturalImageLuminance node)
 % select tree node (does ON & OFF in pop analysis together)
+% Eg off 20170214Ec5 (im 5)
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};  
 doCSNaturalImageLuminanceAnalysis(parentNode,...
@@ -206,6 +207,7 @@ gui = epochTreeGUI(tree);
 %% FLASHED GRATING MOD SURROUND: analysis & figs
 % flag recType nodes, set grating contrast as examples
 % select cell type as parentNode
+% OFF eg = 20170214Ec5, 0.9 contrast
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doFlashedGratingModSurroundAnalysis(parentNode,...

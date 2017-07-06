@@ -305,6 +305,9 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
     upLim = max([meanVals.exc.measured,meanVals.exc.linsum]);
     addLineToAxis([0 upLim],[0 upLim],'unity',fig8,'k','--','none')
     
+    disp(['n On = ',num2str(length(ONcellInds))])
+    disp(['n Off = ',num2str(length(OFFcellInds))])
+    
     %corr pop:
     addLineToAxis(ones(1,length(OFFcellInds)),diffCorrValues(OFFcellInds),'OffData',fig9,'r','none','o')
     meanOFF = mean(diffCorrValues(OFFcellInds));

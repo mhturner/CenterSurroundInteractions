@@ -1,20 +1,35 @@
 clear all; close all; clc;
 
-stimInd = 55; %stim to use, up to 74
-noPatches = 5000;
+outputDir = '~/Documents/MATLAB/RFSurround/resources/RFsurroundNLIresults/';
+resources_dir = '~/Documents/MATLAB/turner-package/resources/';
+IMAGES_DIR_VH = '~/Documents/MATLAB/MHT-analysis/resources/vanhateren_iml/';
+load([resources_dir, 'dovesFEMstims_20160422.mat'])
+
+for currentImageIndex = 1:30
+
+
+targetImageIndex = currentImageIndex; %up to 30
+for ss = 1:length(FEMdata)
+    if FEMdata(ss).ImageIndex == targetImageIndex;
+        stimInd = ss;
+        break;
+    end
+end
+
+noPatches = 1000;
 micronsPerPixel = 6.6;
 
 %RF components:
-SubunitSurroundWeight = 0.72;     % relative to center integral
+%"Standard" = 0.72
+% Weak = 0.10
+% Strong = 1.1
+SubunitSurroundWeight = 1.1;     % relative to center integral
 
 filterSize_um = 700;                % size of patch (um)
 subunitSigma_um = 10;
 subunitSurroundSigma_um = 150;
 centerSigma_um = 40;
 
-resources_dir = '~/Documents/MATLAB/turner-package/resources/';
-IMAGES_DIR_VH = '~/Documents/MATLAB/MHT-analysis/resources/vanhateren_iml/';
-load([resources_dir, 'dovesFEMstims_20160422.mat'])
 
 %image:
 fileName = [FEMdata(stimInd).ImageName(1:8), '_',num2str(FEMdata(stimInd).SubjectIndex),'.mat'];
@@ -60,10 +75,10 @@ RFCenter = RFCenter / sum(RFCenter(:));
 subunitWeightings = RFCenter(SubunitIndices);
 subunitWeightings = subunitWeightings ./ sum(subunitWeightings);
 
-
-figure(2); clf;  set(gcf, 'WindowStyle', 'docked')
-subplot(221); imagesc(RFCenter); colormap(gray); colorbar; title('Center')
-subplot(222); imagesc(SubunitWithSurroundFilter); colormap(gray); colorbar; title('Subunit w/ surround')
+% 
+% figure(2); clf;  set(gcf, 'WindowStyle', 'docked')
+% subplot(221); imagesc(RFCenter); colormap(gray); colorbar; title('Center')
+% subplot(222); imagesc(SubunitWithSurroundFilter); colormap(gray); colorbar; title('Subunit w/ surround')
 
 % response to spots
 
@@ -91,30 +106,32 @@ centerSize = round(centerSize_um / micronsPerPixel);
 
 
 %Exp spots responses
-figure; clf;
-fig1=gca;
-set(fig1,'XScale','linear','YScale','linear')
-set(0, 'DefaultAxesFontSize', 12)
-set(get(fig1,'XLabel'),'String','Spot diameter (um)')
-set(get(fig1,'YLabel'),'String','Response (a.u.)')
-addLineToAxis(stimulus.spotSize,response.spots,'areaSum',fig1,'k','-','none')
-
-figID = 'MixedSurModel_ExpSpots';
-makeAxisStruct(fig1,figID ,'RFSurroundFigs')
+% figure; clf;
+% fig1=gca;
+% set(fig1,'XScale','linear','YScale','linear')
+% set(0, 'DefaultAxesFontSize', 12)
+% set(get(fig1,'XLabel'),'String','Spot diameter (um)')
+% set(get(fig1,'YLabel'),'String','Response (a.u.)')
+% addLineToAxis(stimulus.spotSize,response.spots,'areaSum',fig1,'k','-','none')
+% 
+% figID = 'MixedSurModel_ExpSpots_strong';
+% makeAxisStruct(fig1,figID ,'RFSurroundFigs')
 
 
 %Subunit filter
-figure; clf;
-fig3=gca;
-set(fig3,'XScale','linear','YScale','linear')
-set(0, 'DefaultAxesFontSize', 12)
-set(get(fig3,'XLabel'),'String','Loc (um)')
-set(get(fig3,'YLabel'),'String','Sens')
-addLineToAxis((-filterSize/2 + 1) : (filterSize/2),sum(SubunitWithSurroundFilter),'areaSum',fig3,'k','-','none')
+% figure; clf;
+% fig3=gca;
+% set(fig3,'XScale','linear','YScale','linear')
+% set(0, 'DefaultAxesFontSize', 12)
+% set(get(fig3,'XLabel'),'String','Loc (um)')
+% set(get(fig3,'YLabel'),'String','Sens')
+% addLineToAxis((-filterSize/2 + 1) : (filterSize/2),sum(SubunitWithSurroundFilter),'areaSum',fig3,'k','-','none')
+% 
+% figID = 'MixedSurModel_SubFilter';
+% makeAxisStruct(fig3,figID ,'RFSurroundFigs')
+% % % responses to image patches and discs, +/- surrounds
 
-figID = 'MixedSurModel_SubFilter';
-makeAxisStruct(fig3,figID ,'RFSurroundFigs')
-%% responses to image patches and discs, +/- surrounds
+%
 tic;
 contrastPolarity = -1;
 
@@ -131,7 +148,6 @@ response.DiscMixedSurround = [];
 stimulus.CenterLocation = [];
 stimulus.MixedSurroundLocation = [];
 
-
 [rr, cc] = meshgrid(1:filterSize,1:filterSize);
 centerBinary = double(sqrt((rr-(filterSize/2)).^2+(cc-(filterSize/2)).^2)<=(centerSize/2));
 for pp = 1:noPatches
@@ -146,7 +162,7 @@ for pp = 1:noPatches
     y_mix = round(filterSize/2 + (h - filterSize)*rand);
     mixedImagePatch = contrastPolarity .* my_image_nomean(y_mix - filterSize/2 + 1 : y_mix + filterSize/2, x_mix - filterSize/2 + 1 : x_mix + filterSize/2);
     stimulus.MixedSurroundLocation(pp,:) = [x_mix, y_mix];
-    
+
     %1) Image:
         ImageStim = newImagePatch;
         ImageStim(~centerBinary) = 0; %add aperture
@@ -239,59 +255,280 @@ for pp = 1:noPatches
    
 end
 toc;
+% save([outputDir,'ImageDiscModel_strong_',num2str(targetImageIndex),'_20170705.mat'],'stimulus','response')
 
-save(['ImageDiscModelResults_',num2str(stimInd),'_20170619.mat'],'stimulus','response')
+disp(currentImageIndex)
+
+end
+%% load results and plot analysis
+clear all; close all; clc;
+
+% surroundType = 'std';
+% surroundType = 'weak';
+surroundType = 'strong';
+
+noPatches = 1000;
+noBins = 100;
+binEdges = linspace(-1,1,noBins+1);
+binCtrs = binEdges(1:end-1) + diff(binEdges);
+
+all.nn.none = [];
+all.nn.nat = [];
+all.nn.mix = [];
+
+low.nn.none = [];
+low.nn.nat = [];
+low.nn.mix = [];
+
+high.nn.none = [];
+high.nn.nat = [];
+high.nn.mix = [];
+
+meanNLI_none = [];
+meanNLI_nat = [];
+meanNLI_mix = [];
+
+%skip 12, no image
+for currentImageIndex = 1:30
+    if currentImageIndex == 12
+        continue
+    end
+    if strcmp(surroundType,'std')
+        load(['ImageDiscModelResults_',num2str(currentImageIndex),'_20170623.mat'])
+        figTag = '';
+    elseif strcmp(surroundType,'weak')
+        load(['ImageDiscModel_weak_',num2str(currentImageIndex),'_20170705.mat'])
+        figTag = 'wk';
+    elseif strcmp(surroundType,'strong')
+        load(['ImageDiscModel_strong_',num2str(currentImageIndex),'_20170705.mat'])
+        figTag = 'str';
+    end
+    
+
+    %calc NLIs:
+    NLI_noSurround = (response.Image - response.Disc) ./...
+        (response.Image + response.Disc);
+    
+    NLI_naturalSurround = (response.ImageMatchedSurround - response.DiscMatchedSurround) ./...
+        (response.ImageMatchedSurround + response.DiscMatchedSurround);
+
+    NLI_mixedSurround = (response.ImageMixedSurround - response.DiscMixedSurround) ./...
+        (response.ImageMixedSurround + response.DiscMixedSurround);
+    
+    meanNLI_none = cat(1,meanNLI_none,nanmean(NLI_noSurround));
+    meanNLI_nat = cat(1,meanNLI_nat,nanmean(NLI_naturalSurround));
+    meanNLI_mix = cat(1,meanNLI_mix,nanmean(NLI_mixedSurround));
+    
+    cutoffValue = mean(NLI_noSurround);
+    
+    %NLI based cutoff, both sides:
+    lowIndices = find(NLI_noSurround < cutoffValue);
+    highIndices = find(NLI_noSurround >= cutoffValue);
+    
+    %histograms:
+    %all:
+    [tempnn, ~] = histcounts(NLI_noSurround,binEdges,'Normalization','probability');
+    all.nn.none = cat(1,all.nn.none,tempnn);
+    
+    [tempnn, ~] = histcounts(NLI_naturalSurround,binEdges,'Normalization','probability');
+    all.nn.nat = cat(1,all.nn.nat,tempnn);
+    
+    [tempnn, ~] = histcounts(NLI_mixedSurround,binEdges,'Normalization','probability');
+    all.nn.mix = cat(1,all.nn.mix,tempnn);
+    
+    
+    %low starting NLI:
+    [tempnn, ~] = histcounts(NLI_noSurround(lowIndices),binEdges,'Normalization','probability');
+    low.nn.none = cat(1,low.nn.none,tempnn);
+    
+    [tempnn, ~] = histcounts(NLI_naturalSurround(lowIndices),binEdges,'Normalization','probability');
+    low.nn.nat = cat(1,low.nn.nat,tempnn);
+    
+    [tempnn, ~] = histcounts(NLI_mixedSurround(lowIndices),binEdges,'Normalization','probability');
+    low.nn.mix = cat(1,low.nn.mix,tempnn);
+    
+    %high starting NLI:
+    [tempnn, ~] = histcounts(NLI_noSurround(highIndices),binEdges,'Normalization','probability');
+    high.nn.none = cat(1,high.nn.none,tempnn);
+    
+    [tempnn, ~] = histcounts(NLI_naturalSurround(highIndices),binEdges,'Normalization','probability');
+    high.nn.nat = cat(1,high.nn.nat,tempnn);
+    
+    [tempnn, ~] = histcounts(NLI_mixedSurround(highIndices),binEdges,'Normalization','probability');
+    high.nn.mix = cat(1,high.nn.mix,tempnn);
+
+end
+%% mean NLIs
+figure; clf;
+fig4=gca;
+set(fig4,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig4,'XLabel'),'String','NLI no surround')
+set(get(fig4,'YLabel'),'String','NLI natural surround')
+addLineToAxis(meanNLI_none,meanNLI_nat,'data',fig4,'g','none','o')
+errY = std(meanNLI_nat) ./ sqrt(length(meanNLI_nat));
+errX = std(meanNLI_none) ./ sqrt(length(meanNLI_none));
+
+addLineToAxis(mean(meanNLI_none),mean(meanNLI_nat),'mean',fig4,'g','none','s')
+
+addLineToAxis([mean(meanNLI_none), mean(meanNLI_none)],...
+    mean(meanNLI_nat) + [-errY, errY],'errY',fig4,'g','-','none')
+addLineToAxis(mean(meanNLI_none) +  [-errX, errX],...
+    [mean(meanNLI_nat), mean(meanNLI_nat)],'errX',fig4,'g','-','none')
+
+addLineToAxis([0 1],[0 1],'unity',fig4,'k','--','none')
+[p, ~] = signrank(meanNLI_none,meanNLI_nat)
+figID = ['MixSurMod_no_nat',figTag];
+makeAxisStruct(fig4,figID ,'RFSurroundFigs')
+
+
+figure; clf;
+fig5=gca;
+set(fig5,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig5,'XLabel'),'String','NLI no surround')
+set(get(fig5,'YLabel'),'String','NLI random surround')
+addLineToAxis(meanNLI_none,meanNLI_mix,'data',fig5,'r','none','o')
+
+errY = std(meanNLI_mix) ./ sqrt(length(meanNLI_mix));
+errX = std(meanNLI_none) ./ sqrt(length(meanNLI_none));
+
+addLineToAxis(mean(meanNLI_none),mean(meanNLI_mix),'mean',fig5,'r','none','s')
+
+addLineToAxis([mean(meanNLI_none), mean(meanNLI_none)],...
+    mean(meanNLI_mix) + [-errY, errY],'errY',fig5,'r','-','none')
+addLineToAxis(mean(meanNLI_none) +  [-errX, errX],...
+    [mean(meanNLI_mix), mean(meanNLI_mix)],'errX',fig5,'r','-','none')
+
+addLineToAxis([0 1],[0 1],'unity',fig5,'k','--','none')
+[p, ~] = signrank(meanNLI_none,meanNLI_mix)
+figID = ['MixSurMod_no_mix',figTag];
+makeAxisStruct(fig5,figID ,'RFSurroundFigs')
+
+figure; clf;
+fig6=gca;
+set(fig6,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig6,'XLabel'),'String','NLI natural surround')
+set(get(fig6,'YLabel'),'String','NLI random surround')
+addLineToAxis(meanNLI_nat,meanNLI_mix,'data',fig6,'k','none','o')
+
+errY = std(meanNLI_mix) ./ sqrt(length(meanNLI_mix));
+errX = std(meanNLI_nat) ./ sqrt(length(meanNLI_nat));
+
+addLineToAxis(mean(meanNLI_nat),mean(meanNLI_mix),'mean',fig6,'k','none','s')
+
+addLineToAxis([mean(meanNLI_nat), mean(meanNLI_nat)],...
+    mean(meanNLI_mix) + [-errY, errY],'errY',fig6,'k','-','none')
+addLineToAxis(mean(meanNLI_nat) +  [-errX, errX],...
+    [mean(meanNLI_mix), mean(meanNLI_mix)],'errX',fig6,'k','-','none')
+
+addLineToAxis([0 1],[0 1],'unity',fig6,'k','--','none')
+[p, ~] = signrank(meanNLI_nat,meanNLI_mix)
+figID = ['MixSurMod_nat_mix',figTag];
+makeAxisStruct(fig6,figID ,'RFSurroundFigs')
 
 %%
+% % % % % % %NLI histograms: % % % % % % % % % % % % % % % % % % 
+% ALL: % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+noSur.mean = mean(all.nn.none,1);
+noSur.err = std(all.nn.none,[],1) ./ sqrt(size(all.nn.none,1));
 
+natSur.mean = mean(all.nn.nat,1);
+natSur.err = std(all.nn.nat,[],1) ./ sqrt(size(all.nn.nat,1));
 
-NLI_noSurround = (response.Image - response.Disc) ./...
-    (response.Image + response.Disc);
+mixSur.mean = mean(all.nn.mix,1);
+mixSur.err = std(all.nn.mix,[],1) ./ sqrt(size(all.nn.mix,1));
 
-NLI_naturalSurround = (response.ImageMatchedSurround - response.DiscMatchedSurround) ./...
-    (response.ImageMatchedSurround + response.DiscMatchedSurround);
+figure; clf;
+fig1=gca;
+set(fig1,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig1,'XLabel'),'String','NLI')
+set(get(fig1,'YLabel'),'String','Fraction image patches')
 
-NLI_mixedSurround = (response.ImageMixedSurround - response.DiscMixedSurround) ./...
-    (response.ImageMixedSurround + response.DiscMixedSurround);
+addLineToAxis(binCtrs,noSur.mean,'no_mean',fig1,'k','-','none')
+addLineToAxis(binCtrs,noSur.mean - noSur.err,'no_errDown',fig1,'k','--','none')
+addLineToAxis(binCtrs,noSur.mean + noSur.err,'no_errUp',fig1,'k','--','none')
 
-[val, ind] = sort(NLI_noSurround, 'descend');
+addLineToAxis(binCtrs,natSur.mean,'nat_mean',fig1,'g','-','none')
+addLineToAxis(binCtrs,natSur.mean - natSur.err,'nat_errDown',fig1,'g','--','none')
+addLineToAxis(binCtrs,natSur.mean + natSur.err,'nat_errUp',fig1,'g','--','none')
 
-figure(20); clf; subplot(211);
-hold on;
-plot(1:noPatches,val,'k.')
-plot(1:noPatches,NLI_naturalSurround(ind),'ro')
+addLineToAxis(binCtrs,mixSur.mean,'mix_mean',fig1,'r','-','none')
+addLineToAxis(binCtrs,mixSur.mean - mixSur.err,'mix_errDown',fig1,'r','--','none')
+addLineToAxis(binCtrs,mixSur.mean + mixSur.err,'mix_errUp',fig1,'r','--','none')
 
-subplot(212);
-hold on;
-plot(1:noPatches,val,'k.')
-plot(1:noPatches,NLI_mixedSurround(ind),'ro')
+figID = 'MixSurMod_NLIhist_ALL';
+makeAxisStruct(fig1,figID ,'RFSurroundFigs')
+% LOW: % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+noSur.mean = mean(low.nn.none,1);
+noSur.err = std(low.nn.none,[],1) ./ sqrt(size(low.nn.none,1));
 
-cutoffNLI = 0.1;
-takeUpTo = find(val < cutoffNLI,1) - 1; %cutoff at cutoffNLI
-noBins = 25;
+natSur.mean = mean(low.nn.nat,1);
+natSur.err = std(low.nn.nat,[],1) ./ sqrt(size(low.nn.nat,1));
 
-%NLI histograms
+mixSur.mean = mean(low.nn.mix,1);
+mixSur.err = std(low.nn.mix,[],1) ./ sqrt(size(low.nn.mix,1));
+
 figure; clf;
 fig2=gca;
 set(fig2,'XScale','linear','YScale','linear')
 set(0, 'DefaultAxesFontSize', 12)
 set(get(fig2,'XLabel'),'String','NLI')
 set(get(fig2,'YLabel'),'String','Fraction image patches')
-addLineToAxis([cutoffNLI cutoffNLI],[0 0.4],'cutoff',fig2,'k','--','none')
-%no surround:
-[nn, ctr] = histcounts(val(1:takeUpTo),noBins);
-binCtrs = ctr(1:end-1) + diff(ctr);
-addLineToAxis(binCtrs,nn./sum(nn),'noSurround',fig2,'k','-','none')
-%nat surround:
-[nn, ctr] = histcounts(NLI_naturalSurround(ind(1:takeUpTo)),noBins);
-binCtrs = ctr(1:end-1) + diff(ctr);
-addLineToAxis(binCtrs,nn./sum(nn),'natSurround',fig2,'g','-','none')
-%mixed surround:
-[nn, ctr] = histcounts(NLI_mixedSurround(ind(1:takeUpTo)),noBins);
-binCtrs = ctr(1:end-1) + diff(ctr);
-addLineToAxis(binCtrs,nn./sum(nn),'mixSurround',fig2,'r','-','none')
 
-figID = 'MixedSurModel_NLIhist';
-% makeAxisStruct(fig2,figID ,'RFSurroundFigs')
+addLineToAxis(binCtrs,noSur.mean,'no_mean',fig2,'k','-','none')
+addLineToAxis(binCtrs,noSur.mean - noSur.err,'no_errDown',fig2,'k','--','none')
+addLineToAxis(binCtrs,noSur.mean + noSur.err,'no_errUp',fig2,'k','--','none')
+
+addLineToAxis(binCtrs,natSur.mean,'nat_mean',fig2,'g','-','none')
+addLineToAxis(binCtrs,natSur.mean - natSur.err,'nat_errDown',fig2,'g','--','none')
+addLineToAxis(binCtrs,natSur.mean + natSur.err,'nat_errUp',fig2,'g','--','none')
+
+addLineToAxis(binCtrs,mixSur.mean,'mix_mean',fig2,'r','-','none')
+addLineToAxis(binCtrs,mixSur.mean - mixSur.err,'mix_errDown',fig2,'r','--','none')
+addLineToAxis(binCtrs,mixSur.mean + mixSur.err,'mix_errUp',fig2,'r','--','none')
+
+figID = 'MixSurMod_NLIhist_LOW';
+makeAxisStruct(fig2,figID ,'RFSurroundFigs')
+
+% HIGH: % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+noSur.mean = mean(high.nn.none,1);
+noSur.err = std(high.nn.none,[],1) ./ sqrt(size(high.nn.none,1));
+
+natSur.mean = mean(high.nn.nat,1);
+natSur.err = std(high.nn.nat,[],1) ./ sqrt(size(high.nn.nat,1));
+
+mixSur.mean = mean(high.nn.mix,1);
+mixSur.err = std(high.nn.mix,[],1) ./ sqrt(size(high.nn.mix,1));
+
+figure; clf;
+fig3=gca;
+set(fig3,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig3,'XLabel'),'String','NLI')
+set(get(fig3,'YLabel'),'String','Fraction image patches')
+
+addLineToAxis(binCtrs,noSur.mean,'no_mean',fig3,'k','-','none')
+addLineToAxis(binCtrs,noSur.mean - noSur.err,'no_errDown',fig3,'k','--','none')
+addLineToAxis(binCtrs,noSur.mean + noSur.err,'no_errUp',fig3,'k','--','none')
+
+addLineToAxis(binCtrs,natSur.mean,'nat_mean',fig3,'g','-','none')
+addLineToAxis(binCtrs,natSur.mean - natSur.err,'nat_errDown',fig3,'g','--','none')
+addLineToAxis(binCtrs,natSur.mean + natSur.err,'nat_errUp',fig3,'g','--','none')
+
+addLineToAxis(binCtrs,mixSur.mean,'mix_mean',fig3,'r','-','none')
+addLineToAxis(binCtrs,mixSur.mean - mixSur.err,'mix_errDown',fig3,'r','--','none')
+addLineToAxis(binCtrs,mixSur.mean + mixSur.err,'mix_errUp',fig3,'r','--','none')
+
+figID = 'MixSurMod_NLIhist_HIGH';
+makeAxisStruct(fig3,figID ,'RFSurroundFigs')
+
+
+
+
+
+
 
 

@@ -215,13 +215,30 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
                 addLineToAxis(surroundContrastValues, DiffMatrix(ii,:),['NLI',num2str(ii)],fig3,colors(ii,:),'-','o')
             end
         end
+        if size(DiffMatrix,1) < 4 %didn't get thru all 4 grating contrasts
+            tempMat = DiffMatrix;
+            DiffMatrix = [];
+            targetCC = [0.25, 0.5, 0.75, 0.9];
+            for cc = 1:4
+                tempInd = find(targetCC(cc) == gratingContrastValues);
+                if isempty(tempInd) 
+                    DiffMatrix(cc,:) = nan(1,9);
+                else
+                    DiffMatrix(cc,:) = tempMat(tempInd,:);
+                end
+            end
+        end
+        
         popDiffMatrix = cat(3,popDiffMatrix, DiffMatrix);
     end %for cell
     %population NLI stats:
     meanPop = nanmean(popDiffMatrix,3);
     stdPop = nanstd(popDiffMatrix,[],3);
-    semPop = stdPop ./ sqrt(pp);
+    nPop = sum(~isnan(popDiffMatrix),3);
     
+    semPop = stdPop ./ sqrt(nPop);
+    
+    gratingContrastValues = [0.25 0.5 0.75 0.9];
     colors = repmat(linspace(0,0.8,length(gratingContrastValues))',[1 3]);
     for ii = 1:length(gratingContrastValues)
         addLineToAxis(surroundContrastValues, meanPop(ii,:),['mean',num2str(ii)],fig6,colors(ii,:),'-','o')
