@@ -26,6 +26,7 @@ gui = epochTreeGUI(tree);
 %% DOVES CS ADDITIVITY: analysis and figs
 % flag stimulusIndex nodes in population, example nodes are stimulusIndex
 % select whole tree at root
+% eg OFF 20170411Ec4_13
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doDOVEScsAdditivityAnalysis(parentNode,...
@@ -128,6 +129,7 @@ gui = epochTreeGUI(tree);
 % flag recType nodes in population, example nodes are at CorrelatedCSNoise
 %       node
 % select tree node (does ON & OFF in pop analysis together)
+% eg cell 
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};  
 doCorrelatedCSNoiseAnalysis(parentNode,...
@@ -176,6 +178,7 @@ gui = epochTreeGUI(tree);
 %% LINEAR EQUIVALENT DISC MOD SURROUND: analysis
 % flag recType nodes, set patch location as examples
 % select cell type as parentNode
+% Eg off spike: 20170110Ec2
 
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};

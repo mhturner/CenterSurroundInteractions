@@ -21,6 +21,10 @@ function doLEDMixedSurroundAnalysis(node,varargin)
         end
     end
     
+    p_none = [];
+    p_nat = [];
+    p_mix = [];
+    imageCt = 0;
     for pp = 1:length(populationNodes) % for cell in pop
         cellNode = populationNodes{pp};
         cellInfo = getCellInfoFromEpochList(cellNode.epochList);
@@ -30,6 +34,7 @@ function doLEDMixedSurroundAnalysis(node,varargin)
         DiscResponseMatrix = [];
         NLIresultsMatrix = []; 
         for imageInd = 1:cellNode.children.length % for image ID
+            imageCt = imageCt + 1;
             imageNode = cellNode.children(imageInd);
             for patchInd = 1:imageNode.children.length % for center patch
                 patchNode = imageNode.children(patchInd);
@@ -64,10 +69,33 @@ function doLEDMixedSurroundAnalysis(node,varargin)
                 
                 
             end % for center patch
+            %no surround
+            imageResp = ImageResponseMatrix(:,1); discResp = DiscResponseMatrix(:,1);
+            ssTot=sum((imageResp-mean(imageResp)).^2); 
+            ssErr=sum((imageResp - discResp).^2);
+            rSquared=1-ssErr/ssTot;
+            p_none(imageCt) = rSquared;
+            
+            %nat surround
+            imageResp = ImageResponseMatrix(:,2); discResp = DiscResponseMatrix(:,2);
+            ssTot=sum((imageResp-mean(imageResp)).^2); 
+            ssErr=sum((imageResp - discResp).^2);
+            rSquared=1-ssErr/ssTot;
+            p_nat(imageCt) = rSquared;
+            
+            %mix surround
+            imageResp = ImageResponseMatrix(:,3:end); discResp = DiscResponseMatrix(:,3:end);
+            imageResp = imageResp (:); discResp = discResp(:);
+            ssTot=sum((imageResp-mean(imageResp)).^2); 
+            ssErr=sum((imageResp - discResp).^2);
+            rSquared=1-ssErr/ssTot;
+            p_mix(imageCt) = rSquared;
+            
             
         end % for image ID
     end % for cell in pop
     
+   
     NLI_rand = mean(NLIresultsMatrix(:,3:end),2);
     NLI_nat = NLIresultsMatrix(:,2);
     NLI_no = NLIresultsMatrix(:,1);

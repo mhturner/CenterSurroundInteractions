@@ -113,6 +113,15 @@ function doLEDModSurroundAnalysis(node,varargin)
     set(get(fig12,'YLabel'),'String','pCorrect(Image vs. Disc)')
     set(gcf, 'WindowStyle', 'docked')
     
+    %NLI vs (Ic - Is)
+    figure; clf;
+    fig13=gca;
+    set(fig13,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 12)
+    set(get(fig13,'XLabel'),'String','Ic - Is')
+    set(get(fig13,'YLabel'),'String','NLI')
+    set(gcf, 'WindowStyle', 'docked')
+    
     populationNodes = {};
     ct = 0;
     for nn = 1:node.descendentsDepthFirst.length
@@ -133,6 +142,10 @@ function doLEDModSurroundAnalysis(node,varargin)
     
     runningPCorrect.timingCode = [];
     runningPCorrect.countCode = [];
+    
+    AllIntDiff = [];
+    AllNLI = [];
+    AllRespDiff = [];
     
     pCorrect_natural = [];
     
@@ -277,7 +290,26 @@ function doLEDModSurroundAnalysis(node,varargin)
                         end %end if eg surrounds
                     end %end if example
                 end %for surround
-               
+
+
+                %NLI vs (Ic - Is)
+                backgroundInt = patchNode.epochList.firstValue.protocolSettings('backgroundIntensity');
+                discInt = patchNode.epochList.firstValue.protocolSettings('equivalentIntensity');
+                surroundInt = backgroundInt + backgroundInt * parameterizedSurroundContrasts;
+                IntDiff = discInt - surroundInt;
+                IntDiff = IntDiff ./ backgroundInt; %normalize by image background
+                
+                tempDiff = (imageResponseMatrix.image.mean(ll,:) - imageResponseMatrix.disc.mean(ll,:));
+                tempNLI = tempDiff ./ ...
+                    (imageResponseMatrix.image.mean(ll,:) + imageResponseMatrix.disc.mean(ll,:));
+                
+                
+                
+                AllIntDiff(patchCt,:) = IntDiff;
+                AllNLI(patchCt,:) = tempNLI;
+                AllRespDiff(patchCt,:) = tempDiff;
+                
+                
                if patchNode.custom.get('isExample') %add to example figs
                     patchLocation = str2num(patchNode.splitValue);
                     imageRes = getNaturalImagePatchFromLocation(patchLocation,imageNode.splitValue,'imageSize',[250 250]);
@@ -315,6 +347,12 @@ function doLEDModSurroundAnalysis(node,varargin)
         end %for image
 
     end %for cell
+
+    %NLI vs (Ic - Is)
+    binAndPlotEquallyPopulatedBins(AllIntDiff(:),AllNLI(:), 9, fig13)
+    
+
+    
     disp('-------------------')
     disp([num2str(length(NLIvalues.naturalSurround)), ' patches'])
     disp([num2str(pp), ' cells'])
@@ -410,7 +448,7 @@ function doLEDModSurroundAnalysis(node,varargin)
         makeAxisStruct(fig4,['LEDmodS_NLInat_',figureID] ,'RFSurroundFigs')
         makeAxisStruct(fig5,['LEDmodS_natScatter_',figureID] ,'RFSurroundFigs')
 %         makeAxisStruct(fig6,['LEDmodS_DvsS_',figureID] ,'RFSurroundFigs')
-        
+        makeAxisStruct(fig13,['LEDmodS_IntDiff_',figureID] ,'RFSurroundFigs')
         if strcmp(recType,'extracellular') %raster plots
             figID = 'LEDmodS_rast_imAlone';
             makeAxisStruct(fig7,figID ,'RFSurroundFigs')
