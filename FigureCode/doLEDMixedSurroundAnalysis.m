@@ -20,6 +20,9 @@ function doLEDMixedSurroundAnalysis(node,varargin)
             populationNodes(ct) = node.descendentsDepthFirst(nn); %#ok<AGROW>
         end
     end
+
+    meanNLI = [];
+    allNLIMatrix = [];
     
     p_none = [];
     p_nat = [];
@@ -30,45 +33,48 @@ function doLEDMixedSurroundAnalysis(node,varargin)
         cellInfo = getCellInfoFromEpochList(cellNode.epochList);
         recType = getRecordingTypeFromEpochList(cellNode.epochList);
         
-        ImageResponseMatrix = []; % rows = center image, columns = surround image ([none, natural, mixed1, mixed2,...])
+        ImageResponseMatrix = []; % rows = center image, 3 columns = surround condition ([none, natural, mixed])
         DiscResponseMatrix = [];
-        NLIresultsMatrix = []; 
         for imageInd = 1:cellNode.children.length % for image ID
             imageCt = imageCt + 1;
             imageNode = cellNode.children(imageInd);
             for patchInd = 1:imageNode.children.length % for center patch
-                patchNode = imageNode.children(patchInd);
-                centerPatchLocation = convertJavaArrayList(patchNode.epochList.firstValue.protocolSettings('centerPatchLocation'));
-                mixedSurroundCount = 0;
-                for surroundInd = 1:patchNode.children.length % for surround patch
-                    surroundNode = patchNode.children(surroundInd);
-                    currentSurroundLocation = convertJavaArrayList(surroundNode.epochList.firstValue.protocolSettings('currentSurroundLocation'));
-                    %where to put results in NLIresultsMatrix:
-                    if isequal(currentSurroundLocation, [0, 0]) %no surround
-                        putInd = 1;
-                    elseif isequal(currentSurroundLocation, centerPatchLocation) %natural surround
-                        putInd = 2;
-                    else %mixed surround
-                        mixedSurroundCount = mixedSurroundCount + 1;
-                        putInd = 2 + mixedSurroundCount;
-                    end
-                    
-                    %get image and disc responses:
-                    imageResp = getResponseAmplitudeStats(surroundNode.childBySplitValue('image').epochList,recType);
-                    discResp = getResponseAmplitudeStats(surroundNode.childBySplitValue('intensity').epochList,recType);
-                    %compute NLI:
-                    newDiff = (imageResp.(metric).mean - discResp.(metric).mean);
-                    newNLIvalue =  newDiff ./ ...
-                           (abs(imageResp.(metric).mean) + abs(discResp.(metric).mean));
-                       
-                    ImageResponseMatrix(patchInd,putInd) = imageResp.(metric).mean;
-                    DiscResponseMatrix(patchInd,putInd) = discResp.(metric).mean;
-                    NLIresultsMatrix(patchInd,putInd) = newNLIvalue;
-                    
-                end % for surround patch
+                patchNode = imageNode.children(patchInd);                
+                
+                %get image and disc responses, no surround:
+                noSurroundNode = patchNode.childBySplitValue('none');
+                imageResp = getResponseAmplitudeStats(noSurroundNode.childBySplitValue('image').epochList,recType);
+                discResp = getResponseAmplitudeStats(noSurroundNode.childBySplitValue('intensity').epochList,recType);
+                ImageResponseMatrix(patchInd,1) = imageResp.(metric).mean;
+                DiscResponseMatrix(patchInd,1) = discResp.(metric).mean;
                 
                 
+                %get image and disc responses, nat surround:
+                natSurroundNode = patchNode.childBySplitValue('nat');
+                imageResp = getResponseAmplitudeStats(natSurroundNode.childBySplitValue('image').epochList,recType);
+                discResp = getResponseAmplitudeStats(natSurroundNode.childBySplitValue('intensity').epochList,recType);
+                ImageResponseMatrix(patchInd,2) = imageResp.(metric).mean;
+                DiscResponseMatrix(patchInd,2) = discResp.(metric).mean;
+                
+                
+                %get image and disc responses, mixed surround:
+                mixedSurroundNode = patchNode.childBySplitValue('mixed');
+                imageResp = getResponseAmplitudeStats(mixedSurroundNode.childBySplitValue('image').epochList,recType);
+                discResp = getResponseAmplitudeStats(mixedSurroundNode.childBySplitValue('intensity').epochList,recType);
+                ImageResponseMatrix(patchInd,3) = imageResp.(metric).mean;
+                DiscResponseMatrix(patchInd,3) = discResp.(metric).mean;
             end % for center patch
+            
+            %compute NLI matrix for this image
+            % rows = center patch, 3 columns = surround condition ([none, natural, mixed])
+            diffMatrix = ImageResponseMatrix - DiscResponseMatrix;
+            NLIresultsMatrix = diffMatrix ./ (abs(ImageResponseMatrix) + abs(DiscResponseMatrix));
+            
+            allNLIMatrix = cat(1,allNLIMatrix,NLIresultsMatrix);
+            
+            meanNLI(imageCt,:) = nanmean(NLIresultsMatrix,1);
+
+            %R2 values:
             %no surround
             imageResp = ImageResponseMatrix(:,1); discResp = DiscResponseMatrix(:,1);
             ssTot=sum((imageResp-mean(imageResp)).^2); 
@@ -96,46 +102,55 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     end % for cell in pop
     
    
-    NLI_rand = mean(NLIresultsMatrix(:,3:end),2);
-    NLI_nat = NLIresultsMatrix(:,2);
-    NLI_no = NLIresultsMatrix(:,1);
+    figure(4); clf;
+    subplot(311)
+    plot(p_none,p_nat,'go'); hold on;
+    plot([0 1],[0 1],'k--')
+    xlabel('R2 none'); ylabel('R2 nat');
+    subplot(312)
+    plot(p_none,p_mix,'ro'); hold on;
+    plot([0 1],[0 1],'k--')
+    xlabel('R2 none'); ylabel('R2 mix');
+    subplot(313)
+    plot(p_nat,p_mix,'ko'); hold on;
+    plot([0 1],[0 1],'k--')
+    xlabel('R2 nat'); ylabel('R2 mix');
     
-    figure(9); clf;
-    subplot(221); plot(NLI_no,NLI_nat,'go'); hold on; plot([0 1],[0 1],'k--')
-    subplot(222); plot(NLI_no,NLI_rand,'ro'); hold on; plot([0 1],[0 1],'k--')
-    subplot(223); plot(NLI_nat,NLI_rand,'ko'); hold on; plot([0 1],[0 1],'k--')
+    [h, p] = ttest(p_none,p_nat);
+    [h, p] = ttest(p_none,p_mix);
+    [h, p] = ttest(p_nat,p_mix);
+    
+    
+    figure(5); clf;
+    subplot(311)
+    plot(meanNLI(:,1),meanNLI(:,2),'go'); hold on;
+    plot([0 1],[0 1],'k--')
+    xlabel('mean NLI none'); ylabel('mean NLI nat');
+    subplot(312)
+    plot(meanNLI(:,1),meanNLI(:,3),'ro'); hold on;
+    plot([0 1],[0 1],'k--')
+    xlabel('mean NLI none'); ylabel('mean NLI mix');
+    subplot(313)
+    plot(meanNLI(:,2),meanNLI(:,3),'ko'); hold on;
+    plot([0 1],[0 1],'k--')
+    xlabel('mean NLI nat'); ylabel('mean NLI mix');
+    
+    [h, p] = ttest(meanNLI(:,1),meanNLI(:,2))
+    [h, p] = ttest(meanNLI(:,1),meanNLI(:,3))
+    [h, p] = ttest(meanNLI(:,2),meanNLI(:,3))
+    
+    
+    
+    edges = linspace(-1,1,40);
+    binCtrs = edges(1:end - 1) + mean(diff(edges));
+    [nn_none, ~] = histcounts(allNLIMatrix(:,1),edges,'normalization','probability');
+    [nn_nat, ~] = histcounts(allNLIMatrix(:,2),edges,'normalization','probability');
+    [nn_mix, ~] = histcounts(allNLIMatrix(:,3),edges,'normalization','probability');
+    
+    figure(6); clf; hold on;
+    plot(binCtrs,cumsum(nn_none),'k')
+    plot(binCtrs,cumsum(nn_nat),'g')
+    plot(binCtrs,cumsum(nn_mix),'r')
 
-    figure(10); clf; 
-    hold on;
-
-    noPatches = size(NLIresultsMatrix,1);
-    noRandSurrounds = size(NLIresultsMatrix,2) - 2;
-    colors = pmkmp(noPatches);
-    for patchInd = 1:noPatches
-        tempNatSurround = NLIresultsMatrix(patchInd,1);
-        plot(repmat(tempNatSurround,1,noRandSurrounds),NLIresultsMatrix(patchInd,3:end),...
-            'Color',colors(patchInd,:),'Marker','o','LineStyle','none')
-        
-        plot(NLIresultsMatrix(patchInd,1),NLIresultsMatrix(patchInd,2),...
-            'Color',colors(patchInd,:),'Marker','x','LineStyle','none');
-
-    end
-
-    hold on; plot([0 1],[0 1],'k--')
-    xlabel('NLI, no surround'); ylabel('NLI, with surround');
-    
-    noBins = 5;
-    figure(11); clf; hold on;
-    [nn, ctr] = histcounts(NLIresultsMatrix(:,1),noBins);
-    plot(ctr(2:end),nn./sum(nn),'k');
-    
-    [nn, ctr] = histcounts(NLIresultsMatrix(:,2),noBins);
-    plot(ctr(2:end),nn./sum(nn),'g');
-    
-    temp = NLIresultsMatrix(:,3:end);
-    temp = temp(:);
-    [nn, ctr] = histcounts(temp,noBins);
-    plot(ctr(2:end),nn./sum(nn),'r');
-    
     
 end

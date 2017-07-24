@@ -226,17 +226,14 @@ recordingSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, r
 cellTypeSplit = @(list)splitOnCellType(list);
 cellTypeSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, cellTypeSplit);
 
-locationSplit = @(list)splitOnJavaArrayList(list,'centerPatchLocation');
+locationSplit = @(list)splitOnJavaArrayList(list,'currentCenterLocation');
 locationSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, locationSplit);
-
-surroundSplit = @(list)splitOnJavaArrayList(list,'currentSurroundLocation');
-surroundSplit_java = riekesuite.util.SplitValueFunctionAdapter.buildMap(list, surroundSplit);
 
 tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
     recordingSplit_java,...
     'protocolSettings(imageName)',...
     locationSplit_java,...
-    surroundSplit_java,...
+    'protocolSettings(surroundTag)',...
     'protocolSettings(stimulusTag)'});
 
 gui = epochTreeGUI(tree);

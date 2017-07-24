@@ -638,5 +638,99 @@ figID = ['MixSurMod_nat_mix',figTag];
 makeAxisStruct(fig6,figID ,'RFSurroundFigs')
 
 
+%%
+noBins = 40;
+binEdges = linspace(-1,1,noBins+1);
+binCtrs = binEdges(1:end-1) + diff(binEdges);
 
+results.noDiff = [];
+results.noNLI= [];
+
+results.natDiff = [];
+results.natNLI= [];
+
+results.mixDiff = [];
+results.mixNLI = [];
+
+% figure(1); clf;
+% figure(2); clf;
+ct = 0;
+for currentImageIndex = 1:30
+    if currentImageIndex == 12
+        continue
+    end
+    ct = ct + 1;
+    
+    load(['ImageDiscModel_',num2str(currentImageIndex),'_20170718.mat'])
+
+    intDiff_no = (stats.centerMean) ./ stats.imageMean;
+    intDiff_nat = (stats.centerMean - stats.surroundMean) ./ stats.imageMean;
+    intDiff_mix = (stats.centerMean - stats.surroundMean_Mix) ./ stats.imageMean;
+
+    %calc NLIs:
+    NLI_noSurround = (response.Image - response.Disc) ./...
+        (response.Image + response.Disc);
+    
+    NLI_naturalSurround = (response.ImageMatchedSurround - response.DiscMatchedSurround) ./...
+        (response.ImageMatchedSurround + response.DiscMatchedSurround);
+
+    NLI_mixedSurround = (response.ImageMixedSurround - response.DiscMixedSurround) ./...
+        (response.ImageMixedSurround + response.DiscMixedSurround);
+% 
+% NLI_naturalSurround = (response.ImageMatchedSurround - response.DiscMatchedSurround);
+% 
+%     NLI_mixedSurround = (response.ImageMixedSurround - response.DiscMixedSurround);
+%     
+    results.noDiff = cat(1,results.noDiff,intDiff_no);
+    results.noNLI = cat(1,results.noNLI,NLI_noSurround);
+    
+    results.natDiff = cat(1,results.natDiff,intDiff_nat);
+    results.natNLI = cat(1,results.natNLI,NLI_naturalSurround);
+    
+    results.mixDiff = cat(1,results.mixDiff,intDiff_mix);
+    results.mixNLI = cat(1,results.mixNLI,NLI_mixedSurround);
+    
+end
+
+
+figure; clf;
+fig6=gca;
+set(fig6,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig6,'XLabel'),'String','Ic - Is')
+set(get(fig6,'YLabel'),'String','NLI')
+
+results.natDiff = results.natDiff(:);
+results.natNLI = results.natNLI(:);
+keepInds = find(~isnan(results.natNLI));
+results.natDiff = results.natDiff(keepInds);
+results.natNLI = results.natNLI(keepInds);
+binAndPlotEquallyPopulatedBins(results.natDiff(:),results.natNLI(:),40, fig6 ,'g');
+
+results.mixDiff = results.mixDiff(:);
+results.mixNLI = results.mixNLI(:);
+keepInds = find(~isnan(results.mixNLI));
+results.mixDiff = results.mixDiff(keepInds);
+results.mixNLI = results.mixNLI(keepInds);
+binAndPlotEquallyPopulatedBins(results.mixDiff(:),results.mixNLI(:),40, fig6, 'r');
+
+figID = ['MixSur_NLIvsDiff'];
+% makeAxisStruct(fig6,figID ,'RFSurroundFigs')
+
+figure; clf;
+fig7=gca;
+set(fig7,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig7,'XLabel'),'String','Ic - Is')
+set(get(fig7,'YLabel'),'String','NLI')
+
+results.noDiff = results.noDiff(:);
+results.noNLI = results.noNLI(:);
+keepInds = find(~isnan(results.noNLI));
+results.noDiff = results.noDiff(keepInds);
+results.noNLI = results.noNLI(keepInds);
+binAndPlotEquallyPopulatedBins(results.noDiff(:),results.noNLI(:),40, fig7 ,'k');
+
+
+figID = ['MixSur_NLIvsDiff'];
 
