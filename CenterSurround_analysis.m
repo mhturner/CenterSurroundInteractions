@@ -2,12 +2,12 @@
 clear list; clear all; clear java; close all; clc; %#ok<CLJAVA,CLALL>
 loader = edu.washington.rieke.Analysis.getEntityLoader();
 treeFactory = edu.washington.rieke.Analysis.getEpochTreeFactory();
-dataFolder = '/Users/maxturner/CurrentData/RFSurround/';
+dataFolder = '/Users/mhturner/Dropbox/CurrentData/RFSurround/';
 
-saveFileDirectory = '~/Documents/MATLAB/RFSurround/resources/SavedTreeFlags/';
+saveFileDirectory = '~/Dropbox/RiekeLab/Analysis/MATLAB/RFSurround/resources/SavedTreeFlags/';
 import auimodel.*
 import vuidocument.*
-cd('~/Documents/MATLAB/RFSurround/')
+cd('~/Dropbox/RiekeLab/Analysis/MATLAB/RFSurround/')
 
 %% DOVES CS ADDITIVITY: tree
 list = loader.loadEpochList([dataFolder,'DOVEScsAdditivity.mat'],dataFolder);
@@ -133,7 +133,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};  
 doCorrelatedCSNoiseAnalysis(parentNode,...
-    'exportFigs',true);
+    'exportFigs',false);
 
 %% EXPANDING SPOTS: tree
 
@@ -239,13 +239,14 @@ tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
 gui = epochTreeGUI(tree);
 
 %% LINEAR EQUIVALENT DISC MIXED SURROUND: analysis
-% flag recType nodes, set patch location as examples
+% flag recType nodes
+% set image ID as example. E.g. = 
 % select cell type as parentNode
 
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDMixedSurroundAnalysis(parentNode,...
-    'metric','integrated');
+    'metric','integrated','exportFigs',true);
 
 %% CONTRAST RESPONSE SPOTS: tree
 

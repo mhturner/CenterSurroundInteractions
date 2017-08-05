@@ -6,7 +6,7 @@ resources_dir = '~/Documents/MATLAB/turner-package/resources/';
 IMAGES_DIR_VH = '~/Documents/MATLAB/MHT-analysis/resources/vanhateren_iml/';
 load([resources_dir, 'dovesFEMstims_20160422.mat'])
 
-for currentImageIndex = 1:30
+for currentImageIndex = 1%:30
 
 targetImageIndex = currentImageIndex; %up to 30
 for ss = 1:length(FEMdata)
@@ -17,6 +17,7 @@ for ss = 1:length(FEMdata)
 end
 
 noPatches = 1000;
+noPatches = 2;
 micronsPerPixel = 6.6;
 
 %RF components:
@@ -497,13 +498,15 @@ meanNLI_none = [];
 meanNLI_nat = [];
 meanNLI_mix = [];
 
+allNLIMatrix = [];
+
 %skip 12, no image
 for currentImageIndex = 1:30
     if currentImageIndex == 12
         continue
     end
     if strcmp(surroundType,'std')
-        load(['ImageDiscModelResults_',num2str(currentImageIndex),'_20170623.mat'])
+        load(['ImageDiscModel_',num2str(currentImageIndex),'_20170718.mat'])
         figTag = '';
     elseif strcmp(surroundType,'weak')
         load(['ImageDiscModel_weak_',num2str(currentImageIndex),'_20170705.mat'])
@@ -527,6 +530,8 @@ for currentImageIndex = 1:30
     meanNLI_none = cat(1,meanNLI_none,nanmean(NLI_noSurround));
     meanNLI_nat = cat(1,meanNLI_nat,nanmean(NLI_naturalSurround));
     meanNLI_mix = cat(1,meanNLI_mix,nanmean(NLI_mixedSurround));
+    
+    allNLIMatrix = cat(1,allNLIMatrix,[NLI_noSurround',NLI_naturalSurround',NLI_mixedSurround']);
     
     cutoffValue = mean(NLI_noSurround);
     
@@ -567,6 +572,26 @@ for currentImageIndex = 1:30
     high.nn.mix = cat(1,high.nn.mix,tempnn);
 
 end
+figure; clf;
+fig7=gca;
+set(fig7,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig7,'XLabel'),'String','NLI')
+set(get(fig7,'YLabel'),'String','Cumulative prob.')
+
+edges = linspace(-1,1,100);
+binCtrs = edges(1:end - 1) + mean(diff(edges));
+[nn_none, ~] = histcounts(allNLIMatrix(:,1),edges,'normalization','probability');
+[nn_nat, ~] = histcounts(allNLIMatrix(:,2),edges,'normalization','probability');
+[nn_mix, ~] = histcounts(allNLIMatrix(:,3),edges,'normalization','probability');
+
+addLineToAxis(binCtrs,cumsum(nn_none),'none',fig7,'k','-','none')
+addLineToAxis(binCtrs,cumsum(nn_nat),'nat',fig7,'g','-','none')
+addLineToAxis(binCtrs,cumsum(nn_mix),'mix',fig7,'r','-','none')
+
+
+
+%%
 
 figure; clf;
 fig4=gca;
@@ -636,101 +661,4 @@ addLineToAxis([0 1],[0 1],'unity',fig6,'k','--','none')
 [p, ~] = signrank(meanNLI_nat,meanNLI_mix)
 figID = ['MixSurMod_nat_mix',figTag];
 makeAxisStruct(fig6,figID ,'RFSurroundFigs')
-
-
-%%
-noBins = 40;
-binEdges = linspace(-1,1,noBins+1);
-binCtrs = binEdges(1:end-1) + diff(binEdges);
-
-results.noDiff = [];
-results.noNLI= [];
-
-results.natDiff = [];
-results.natNLI= [];
-
-results.mixDiff = [];
-results.mixNLI = [];
-
-% figure(1); clf;
-% figure(2); clf;
-ct = 0;
-for currentImageIndex = 1:30
-    if currentImageIndex == 12
-        continue
-    end
-    ct = ct + 1;
-    
-    load(['ImageDiscModel_',num2str(currentImageIndex),'_20170718.mat'])
-
-    intDiff_no = (stats.centerMean) ./ stats.imageMean;
-    intDiff_nat = (stats.centerMean - stats.surroundMean) ./ stats.imageMean;
-    intDiff_mix = (stats.centerMean - stats.surroundMean_Mix) ./ stats.imageMean;
-
-    %calc NLIs:
-    NLI_noSurround = (response.Image - response.Disc) ./...
-        (response.Image + response.Disc);
-    
-    NLI_naturalSurround = (response.ImageMatchedSurround - response.DiscMatchedSurround) ./...
-        (response.ImageMatchedSurround + response.DiscMatchedSurround);
-
-    NLI_mixedSurround = (response.ImageMixedSurround - response.DiscMixedSurround) ./...
-        (response.ImageMixedSurround + response.DiscMixedSurround);
-% 
-% NLI_naturalSurround = (response.ImageMatchedSurround - response.DiscMatchedSurround);
-% 
-%     NLI_mixedSurround = (response.ImageMixedSurround - response.DiscMixedSurround);
-%     
-    results.noDiff = cat(1,results.noDiff,intDiff_no);
-    results.noNLI = cat(1,results.noNLI,NLI_noSurround);
-    
-    results.natDiff = cat(1,results.natDiff,intDiff_nat);
-    results.natNLI = cat(1,results.natNLI,NLI_naturalSurround);
-    
-    results.mixDiff = cat(1,results.mixDiff,intDiff_mix);
-    results.mixNLI = cat(1,results.mixNLI,NLI_mixedSurround);
-    
-end
-
-
-figure; clf;
-fig6=gca;
-set(fig6,'XScale','linear','YScale','linear')
-set(0, 'DefaultAxesFontSize', 12)
-set(get(fig6,'XLabel'),'String','Ic - Is')
-set(get(fig6,'YLabel'),'String','NLI')
-
-results.natDiff = results.natDiff(:);
-results.natNLI = results.natNLI(:);
-keepInds = find(~isnan(results.natNLI));
-results.natDiff = results.natDiff(keepInds);
-results.natNLI = results.natNLI(keepInds);
-binAndPlotEquallyPopulatedBins(results.natDiff(:),results.natNLI(:),40, fig6 ,'g');
-
-results.mixDiff = results.mixDiff(:);
-results.mixNLI = results.mixNLI(:);
-keepInds = find(~isnan(results.mixNLI));
-results.mixDiff = results.mixDiff(keepInds);
-results.mixNLI = results.mixNLI(keepInds);
-binAndPlotEquallyPopulatedBins(results.mixDiff(:),results.mixNLI(:),40, fig6, 'r');
-
-figID = ['MixSur_NLIvsDiff'];
-% makeAxisStruct(fig6,figID ,'RFSurroundFigs')
-
-figure; clf;
-fig7=gca;
-set(fig7,'XScale','linear','YScale','linear')
-set(0, 'DefaultAxesFontSize', 12)
-set(get(fig7,'XLabel'),'String','Ic - Is')
-set(get(fig7,'YLabel'),'String','NLI')
-
-results.noDiff = results.noDiff(:);
-results.noNLI = results.noNLI(:);
-keepInds = find(~isnan(results.noNLI));
-results.noDiff = results.noDiff(keepInds);
-results.noNLI = results.noNLI(keepInds);
-binAndPlotEquallyPopulatedBins(results.noDiff(:),results.noNLI(:),40, fig7 ,'k');
-
-
-figID = ['MixSur_NLIvsDiff'];
 
