@@ -1,7 +1,8 @@
 clear all; close all; clc;
 tic;
-stimInd = 50; %stim to use
-micronsPerPixel = 3.3;
+%eg stims: 1, 50, 35, 10
+stimInd = 1; %stim to use
+micronsPerPixel = 6.6; %6.6
 
 contrastPolarity = -1;
 
@@ -18,6 +19,7 @@ centerSigma_um = 40;
 surroundSigma_um = 150;
 
 figDir = '~/Dropbox/RiekeLab/Analysis/MATLAB/RFSurround/resources/TempFigs/'; %for saved eps figs
+
 
 resources_dir = '~/Dropbox/RiekeLab/Analysis/MATLAB/turner-package/resources/';
 IMAGES_DIR_VH = '~/Dropbox/RiekeLab/Analysis/MATLAB/MHT-analysis/resources/vanhateren_iml/';
@@ -80,6 +82,8 @@ convolved_subunit = conv2(my_image_nomean,SubunitFilter,'same');
 convolved_subSurround = conv2(my_image_nomean,SubunitWithSurroundFilter,'same');
 toc;
 
+
+figure(1); clf; imagesc(my_image); colormap(gray)
 %% responses to image patches
 tic;
 
@@ -122,6 +126,10 @@ for pp = 1:noPatches
     temp = sum(subunitOutputs .* subunitWeightings) - (newImagePatch_surround(filterSize/2,filterSize/2));
     response.Center_PostNLSurround(y,x) = max(temp,0); %output nonlinearity
     
+    %CenterSurround 3.5 - linear subunit center and surround. Output NL (~DoG):
+    temp = sum(subunitActivations .* subunitWeightings) - (newImagePatch_surround(filterSize/2,filterSize/2));
+    response.DoG(y,x) = max(temp,0); %output nonlinearity
+    
     %CenterSurround 4 - Shared NL, i.e. subunits have surrounds:
     % activation of each subunit
     subunitActivations = newImagePatch_subSurround(SubunitIndices);
@@ -136,17 +144,19 @@ toc;
 buf = filterSize/2;
 
 fh = figure(9); clf;
-imagesc(my_image); colormap(gray);
+imagesc(my_image(buf+1:end-buf,buf+1:end-buf)); colormap(gray);
 brighten(0.6)
+xlim([0,500]); ylim([0 500]);
 axis image; axis off;
 drawnow;
 figID = ['patch_fig_',num2str(stimInd)];
 print(fh,[figDir,figID],'-depsc')
 
 fh = figure(8);
-imagesc(response.Center_subunit); colormap(gray);
+imagesc(response.Center_subunit(buf+1:end,buf+1:end)); colormap(gray);
 caxis([0,1.1*max(response.Center_subunit(:))]); colorbar;
 brighten(0.6)
+xlim([0,500]); ylim([0 500]);
 axis image; axis off;
 drawnow;
 figID = ['patch_cbar_',num2str(stimInd)];
@@ -154,33 +164,51 @@ print(fh,[figDir,figID],'-depsc')
 
 
 fh = figure(10);
-imagesc(response.Center_subunit); colormap(gray);
+imagesc(response.Center_subunit(buf+1:end,buf+1:end)); colormap(gray);
 caxis([0,1.1*max(response.Center_subunit(:))]);
 brighten(0.6)
+xlim([0,500]); ylim([0 500]);
 axis image; axis off;
 drawnow;
 figID = ['patch_sub_',num2str(stimInd)];
 print(fh,[figDir,figID],'-depsc')
 
-fh = figure(11);
-imagesc(response.Center_PostNLSurround); colormap(gray);
-caxis([0,1.1*max(response.Center_subunit(:))]);
-brighten(0.6)
-axis image; axis off;
-drawnow;
-figID = ['patch_postNL_',num2str(stimInd)];
-print(fh,[figDir,figID],'-depsc')
+% fh = figure(11);
+% imagesc(response.Center_PostNLSurround(buf+1:end,buf+1:end)); colormap(gray);
+% caxis([0,1.1*max(response.Center_subunit(:))]);
+% brighten(0.6)
+% axis image; axis off;
+% drawnow;
+% figID = ['patch_postNL_',num2str(stimInd)];
+% print(fh,[figDir,figID],'-depsc')
 
 fh = figure(12);
-imagesc(response.Center_SharedSurround); colormap(gray);
+imagesc(response.Center_SharedSurround(buf+1:end,buf+1:end)); colormap(gray);
 caxis([0,1.1*max(response.Center_subunit(:))]);
 brighten(0.6)
+xlim([0,500]); ylim([0 500]);
 axis image; axis off;
 drawnow;
 figID = ['patch_sharedNL_',num2str(stimInd)];
 print(fh,[figDir,figID],'-depsc')
 
+fh = figure(13);
+imagesc(response.Center_LN(buf+1:end,buf+1:end)); colormap(gray);
+caxis([0,1.1*max(response.Center_subunit(:))]);
+brighten(0.6)
+axis image; axis off;
+drawnow;
+figID = ['patch_centerLN_',num2str(stimInd)];
+print(fh,[figDir,figID],'-depsc')
 
+fh = figure(14);
+imagesc(response.DoG(buf+1:end,buf+1:end)); colormap(gray);
+caxis([0,1.1*max(response.Center_subunit(:))]);
+brighten(0.6)
+axis image; axis off;
+drawnow;
+figID = ['patch_DoG_',num2str(stimInd)];
+print(fh,[figDir,figID],'-depsc')
 
 %% Exp spots...
 figure(2); clf;  set(gcf, 'WindowStyle', 'docked')
