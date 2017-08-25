@@ -158,6 +158,8 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
     addLineToAxis(correlationValues,meanOn,'meanOn',fig11,[0.7 0.7 0.7],'-','o')
     addLineToAxis(correlationValues,meanOn + errOn,'errOnUp',fig11,[0.7 0.7 0.7],'--','none')
     addLineToAxis(correlationValues,meanOn - errOn,'errOnDown',fig11,[0.7 0.7 0.7],'--','none')
+    disp('n On = ')
+    disp(num2str(length(ONcellInds)))
     
     %Off cells:
     offMat = LinearDeviation(OFFcellInds,:);
@@ -167,6 +169,8 @@ function doCorrelatedCSNoiseAnalysis(node,varargin)
     addLineToAxis(correlationValues,meanOff,'meanOff',fig11,'k','-','o')
     addLineToAxis(correlationValues,meanOff + errOff,'errOffUp',fig11,'k','--','none')
     addLineToAxis(correlationValues,meanOff - errOff,'errOffDown',fig11,'k','--','none')
+    disp('n Off = ')
+    disp(num2str(length(OFFcellInds)))
     
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
     if (exportFigs)

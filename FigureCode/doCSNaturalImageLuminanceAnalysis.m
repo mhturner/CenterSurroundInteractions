@@ -3,7 +3,7 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     ip.addRequired('node',@(x)isa(x,'edu.washington.rieke.jauimodel.AuiEpochTree'));
     addParameter(ip,'exportFigs',true,@islogical);
     
-    figDir = '~/Documents/MATLAB/RFSurround/resources/TempFigs/'; %for saved eps figs
+    figDir = '~/Dropbox/RiekeLab/Analysis/MATLAB/RFSurround/resources/TempFigs/'; %for saved eps figs
     
     ip.parse(node,varargin{:});
     node = ip.Results.node;
@@ -281,7 +281,7 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                 addLineToAxis(0,0,cellInfo.cellID,fig11,'k','none','none')
                 
                 %natural image and intensity histogram
-                resourcesDir = '~/Documents/MATLAB/turner-package/resources/';
+                resourcesDir = '~/Dropbox/RiekeLab/Analysis/MATLAB/turner-package/resources/';
                 stimSet = 'VHsubsample_20160105';
                 load([resourcesDir, controlCSNode.epochList.firstValue.protocolSettings('currentStimSet')]);
                 imageName = luminanceData(controlCSNode.epochList.firstValue.protocolSettings('imageIndex')).ImageName;
@@ -332,6 +332,7 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     [~,p] = ttest(meanDiff.control(ONcellInds),meanDiff.shuffle(ONcellInds));
     disp('Control vs. shuffled On:')
     disp(['p = ',num2str(p)])
+    disp(['n = ',num2str(length(ONcellInds))])
     
     %   Off...
     addLineToAxis(meanDiff.control(OFFcellInds),meanDiff.shuffle(OFFcellInds),...
@@ -347,6 +348,7 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     [~,p] = ttest(meanDiff.control(OFFcellInds),meanDiff.shuffle(OFFcellInds));
     disp('Control vs. shuffled Off:')
     disp(['p = ',num2str(p)])
+    disp(['n = ',num2str(length(OFFcellInds))])
     
     downLim = min([meanDiff.control, meanDiff.shuffle, 0]);
     upLim = 1.1*max([meanDiff.control, meanDiff.shuffle]);
