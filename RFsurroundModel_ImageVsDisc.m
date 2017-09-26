@@ -499,6 +499,7 @@ meanNLI_nat = [];
 meanNLI_mix = [];
 
 allNLIMatrix = [];
+allEqContrast = [];
 
 %skip 12, no image
 for currentImageIndex = 1:30
@@ -526,6 +527,10 @@ for currentImageIndex = 1:30
 
     NLI_mixedSurround = (response.ImageMixedSurround - response.DiscMixedSurround) ./...
         (response.ImageMixedSurround + response.DiscMixedSurround);
+    
+%     eqContrast = (stats.centerMean - stats.imageMean) ./ stats.imageMean;
+eqContrast = (stats.centerMean - stats.imageMean);
+    allEqContrast = cat(1,allEqContrast,eqContrast');
     
     meanNLI_none = cat(1,meanNLI_none,nanmean(NLI_noSurround));
     meanNLI_nat = cat(1,meanNLI_nat,nanmean(NLI_naturalSurround));
@@ -589,7 +594,51 @@ addLineToAxis(binCtrs,cumsum(nn_none),'none',fig7,'k','-','none')
 addLineToAxis(binCtrs,cumsum(nn_nat),'nat',fig7,'g','-','none')
 addLineToAxis(binCtrs,cumsum(nn_mix),'mix',fig7,'r','-','none')
 
+%% NLI vs mean center intensity
+figure; clf;
+fig9=gca;
+set(fig9,'XScale','linear','YScale','linear')
+set(0, 'DefaultAxesFontSize', 14)
+set(get(fig9,'XLabel'),'String','Center mean')
+set(get(fig9,'YLabel'),'String','NLI')
+set(gcf, 'WindowStyle', 'docked')
 
+noBins = 20;
+keepInds = (find(~isnan(allNLIMatrix(:,1))));
+binAndPlotEquallyPopulatedBins(allEqContrast(keepInds),allNLIMatrix(keepInds,1),...
+    noBins,fig9,'k','none')    
+
+keepInds = (find(~isnan(allNLIMatrix(:,2))));
+binAndPlotEquallyPopulatedBins(allEqContrast(keepInds),allNLIMatrix(keepInds,2),...
+    noBins,fig9,'g','nat')
+
+keepInds = (find(~isnan(allNLIMatrix(:,3))));
+binAndPlotEquallyPopulatedBins(allEqContrast(keepInds),allNLIMatrix(keepInds,3),...
+    noBins,fig9,'r','mix')
+
+makeAxisStruct(fig9,'MixSurModel_vsCen' ,'RFSurroundFigs')
+%%
+figure(3); clf;
+subplot(131);
+plot(abs(allEqContrast),allNLIMatrix(:,1),'k.')
+
+subplot(132);
+plot(abs(allEqContrast),allNLIMatrix(:,2),'g.')
+
+subplot(133);
+plot(abs(allEqContrast),allNLIMatrix(:,3),'r.')
+
+
+%%
+figure(1); clf;
+subplot(311)
+plot3(stats.centerMean,stats.centerVar,NLI_noSurround,'ko')
+
+subplot(312)
+plot3(stats.centerMean,stats.centerVar,NLI_naturalSurround,'go')
+
+subplot(313)
+plot3(stats.centerMean,stats.centerVar,NLI_mixedSurround,'ro')
 
 %%
 

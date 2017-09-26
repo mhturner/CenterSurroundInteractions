@@ -1,7 +1,7 @@
 clear all; close all; clc;
 tic;
 %eg stims: 1, 50, 35, 10
-stimInd = 1; %stim to use
+stimInd = 35; %stim to use
 micronsPerPixel = 6.6; %6.6
 
 contrastPolarity = -1;
@@ -31,6 +31,11 @@ f1=fopen([IMAGES_DIR_VH, FEMdata(stimInd).ImageName],'rb','ieee-be');
 w=1536;h=1024;
 my_image=fread(f1,[w,h],'uint16');
 my_image = my_image';
+
+%trim it square
+my_image = my_image(1:1024,1:1024);
+w = 1024; h = 1024;
+
 
 my_image_nomean = (my_image - mean(my_image(:))) ./ mean(my_image(:));
 
@@ -210,6 +215,26 @@ drawnow;
 figID = ['patch_DoG_',num2str(stimInd)];
 print(fh,[figDir,figID],'-depsc')
 
+%% power spectra:
+trimSize = 970;
+
+figure; clf; fig1=gca;
+set(fig1,'XScale','log','YScale','log')
+set(0, 'DefaultAxesFontSize', 12)
+set(get(fig1,'XLabel'),'String','Spatial frequency')
+set(get(fig1,'YLabel'),'String','Power')
+
+tempP = getPowerSpectrum(my_image(1:trimSize,1:trimSize),6.6);
+addLineToAxis(tempP.f,tempP.p./tempP.p(2),'Image',fig1,'k','-','none')
+
+tempP = getPowerSpectrum(response.Center_subunit(1:trimSize,1:trimSize),6.6);
+addLineToAxis(tempP.f,tempP.p./tempP.p(2),'CenterSubunit',fig1,'b','-','none')
+
+tempP = getPowerSpectrum(response.DoG(1:trimSize,1:trimSize),6.6);
+addLineToAxis(tempP.f,tempP.p./tempP.p(2),'DoG',fig1,'g','-','none')
+
+tempP = getPowerSpectrum(response.Center_SharedSurround(1:trimSize,1:trimSize),6.6);
+addLineToAxis(tempP.f,tempP.p./tempP.p(2),'SharedSurround',fig1,'r','-','none')
 %% Exp spots...
 figure(2); clf;  set(gcf, 'WindowStyle', 'docked')
 subplot(221); imagesc(RFCenter); colormap(gray); colorbar; title('Center')
