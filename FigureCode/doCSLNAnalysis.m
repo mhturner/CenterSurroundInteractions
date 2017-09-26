@@ -388,11 +388,11 @@ function doCSLNAnalysis(node,varargin)
     addLineToAxis([0 1.1*max(relativeSurroundWeight)],[1 1],...
         'oneLine',fig16,'k','--','none')
     
-    [rho, pval] = corr(relativeSurroundWeight(ONcellInds)',relativeImprovement(ONcellInds)');
+    [rho, pval] = corr(relativeSurroundWeight(ONcellInds),relativeImprovement(ONcellInds)');
     disp('Surr. weight corr with improvement, ON:')
     disp([rho, pval])
     
-    [rho, pval] = corr(relativeSurroundWeight(OFFcellInds)',relativeImprovement(OFFcellInds)');
+    [rho, pval] = corr(relativeSurroundWeight(OFFcellInds),relativeImprovement(OFFcellInds)');
     disp('Surr. weight corr with improvement, OFF:')
     disp([rho, pval])
 

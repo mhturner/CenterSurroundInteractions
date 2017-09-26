@@ -48,6 +48,14 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     set(get(fig8,'YLabel'),'String','Resp. to disc (spk)')
     set(gcf, 'WindowStyle', 'docked')
     
+    % NLI vs mean center intensity
+    figure; clf;
+    fig9=gca;
+    set(fig9,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 14)
+    set(get(fig9,'XLabel'),'String','Center contrast')
+    set(get(fig9,'YLabel'),'String','NLI')
+    set(gcf, 'WindowStyle', 'docked')
     
     
 
@@ -57,10 +65,13 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     meanDiff = [];
     allDiffMatrix = [];
     
+    allEqContrast = [];
+    
     p_none = [];
     p_nat = [];
     p_mix = [];
     imageCt = 0;
+    figure(30); clf;
     for pp = 1:length(populationNodes) % for cell in pop
         cellNode = populationNodes{pp};
         cellInfo = getCellInfoFromEpochList(cellNode.epochList);
@@ -68,11 +79,15 @@ function doLEDMixedSurroundAnalysis(node,varargin)
         
         ImageResponseMatrix = []; % rows = center image, 3 columns = surround condition ([none, natural, mixed])
         DiscResponseMatrix = [];
+        eqContrast = [];
         for imageInd = 1:cellNode.children.length % for image ID
             imageCt = imageCt + 1;
             imageNode = cellNode.children(imageInd);
             for patchInd = 1:imageNode.children.length % for center patch
-                patchNode = imageNode.children(patchInd);                
+                patchNode = imageNode.children(patchInd);    
+                eqInt = patchNode.epochList.firstValue.protocolSettings('equivalentIntensity');
+                bg = patchNode.epochList.firstValue.protocolSettings('backgroundIntensity');
+                eqContrast(patchInd) = (eqInt - bg) / bg;
                 
                 %get image and disc responses, no surround:
                 noSurroundNode = patchNode.childBySplitValue('none');
@@ -97,6 +112,7 @@ function doLEDMixedSurroundAnalysis(node,varargin)
                 ImageResponseMatrix(patchInd,3) = imageResp.(metric).mean;
                 DiscResponseMatrix(patchInd,3) = discResp.(metric).mean;
             end % for center patch
+            
             if imageNode.custom.get('isExample')
                 
                 unityUp = 1.1*max([ImageResponseMatrix(:), DiscResponseMatrix(:)]);
@@ -120,7 +136,9 @@ function doLEDMixedSurroundAnalysis(node,varargin)
             
             allNLIMatrix = cat(1,allNLIMatrix,NLIresultsMatrix);
             meanNLI(imageCt,:) = nanmean(NLIresultsMatrix,1);
-
+            
+            allEqContrast = cat(2,allEqContrast,eqContrast);
+            
             %R2 values:
             %no surround
             imageResp = ImageResponseMatrix(:,1); discResp = DiscResponseMatrix(:,1);
@@ -214,7 +232,24 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     addLineToAxis(meanNat + [-errNat, errNat],[meanMix, meanMix],'errX',fig4,'k','-','none')
     addLineToAxis([meanNat, meanNat],meanMix + [-errMix, errMix],'errY',fig4,'k','-','none')
     addLineToAxis([-0.5 1],[-0.5 1],'unity',fig4,'k','--','none')
+    
 
+    % NLI vs mean center intensity
+    noBins = 12;
+    keepInds = (find(~isnan(allNLIMatrix(:,1))));
+    binAndPlotEquallyPopulatedBins(allEqContrast(keepInds),allNLIMatrix(keepInds,1),...
+        noBins,fig9,'k','none')    
+    
+    keepInds = (find(~isnan(allNLIMatrix(:,2))));
+    binAndPlotEquallyPopulatedBins(allEqContrast(keepInds),allNLIMatrix(keepInds,2),...
+        noBins,fig9,'g','nat')
+    
+    keepInds = (find(~isnan(allNLIMatrix(:,3))));
+    binAndPlotEquallyPopulatedBins(allEqContrast(keepInds),allNLIMatrix(keepInds,3),...
+        noBins,fig9,'r','mix')
+    
+
+    %paired t-test
     [~, p] = ttest(meanNLI(:,1),meanNLI(:,2))
     [~, p] = ttest(meanNLI(:,1),meanNLI(:,3))
     [~, p] = ttest(meanNLI(:,2),meanNLI(:,3))
@@ -226,6 +261,10 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     [nn_none, ~] = histcounts(allNLIMatrix(:,1),edges,'normalization','probability');
     [nn_nat, ~] = histcounts(allNLIMatrix(:,2),edges,'normalization','probability');
     [nn_mix, ~] = histcounts(allNLIMatrix(:,3),edges,'normalization','probability');
+    
+    %kruskal-wallis test to see if Nat & Shuffled NLI samples come from
+    %same distribution
+    p = kruskalwallis(allNLIMatrix(:,2:3))
     
     disp('No. patches:')
     disp(size(allNLIMatrix,1));
@@ -255,6 +294,8 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     makeAxisStruct(fig6,'MixSur_none' ,'RFSurroundFigs')
     makeAxisStruct(fig7,'MixSur_nat' ,'RFSurroundFigs')
     makeAxisStruct(fig8,'MixSur_mix' ,'RFSurroundFigs')
+    
+    makeAxisStruct(fig9,'MixSur_vsCen' ,'RFSurroundFigs')
     
     end
     

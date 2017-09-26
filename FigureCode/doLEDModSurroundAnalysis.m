@@ -223,38 +223,38 @@ function doLEDModSurroundAnalysis(node,varargin)
                        imageResponseMatrix.disc.err(ll,putInd) = discResp.(metric).SEM;
                        surroundContrastValues(ll,putInd) = currentSurroundContrast;
                        
-                        %spike timing matters:
-                        precision=40; %msec
-                        precision=precision*10; %datapoints
-                        q_cost=2/precision;
-                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
-                        pCorrect.timingCode(ll,putInd) = res_timing.pCorrect;
-
-                        %just spike count:
-                        q_cost=0; %free to move spikes. i.e. spike count code
-                        res_count = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
-                        pCorrect.countCode(ll,putInd) = res_count.pCorrect;
-
-                        timeToFirstSpike.image(patchCt,putInd) = median(tempImageTime);
-                        timeToFirstSpike.disc(patchCt,putInd) = median(tempDiscTime);
+% %                         %spike timing matters:
+% %                         precision=40; %msec
+% %                         precision=precision*10; %datapoints
+% %                         q_cost=2/precision;
+% %                         res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+% %                         pCorrect.timingCode(ll,putInd) = res_timing.pCorrect;
+% % 
+% %                         %just spike count:
+% %                         q_cost=0; %free to move spikes. i.e. spike count code
+% %                         res_count = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+% %                         pCorrect.countCode(ll,putInd) = res_count.pCorrect;
+% % 
+% %                         timeToFirstSpike.image(patchCt,putInd) = median(tempImageTime);
+% %                         timeToFirstSpike.disc(patchCt,putInd) = median(tempDiscTime);
                     else %natural surround
                         NLIvalues.naturalSurround(patchCt) = newNLIvalue;
                         resp_natSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
                         
                         %just spike count:
-                        q_cost=0; %free to move spikes. i.e. spike count code
-                        res_count = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
-                        pCorrect_natural(patchCt,1) = res_count.pCorrect;
-                       
-                        %spike timing matters:
-                        precision=40; %msec
-                        precision=precision*10; %datapoints
-                        q_cost=2/precision;
-                        res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
-                        pCorrect_natural(patchCt,2) = res_timing.pCorrect;
-
-                        timeToFirstSpike.image(patchCt,putInd) = median(tempImageTime);
-                        timeToFirstSpike.disc(patchCt,putInd) = median(tempDiscTime);
+%                         q_cost=0; %free to move spikes. i.e. spike count code
+%                         res_count = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+%                         pCorrect_natural(patchCt,1) = res_count.pCorrect;
+%                        
+%                         %spike timing matters:
+%                         precision=40; %msec
+%                         precision=precision*10; %datapoints
+%                         q_cost=2/precision;
+%                         res_timing = doKNNBySpikeD(inputObservations,NumNeighbors,q_cost);
+%                         pCorrect_natural(patchCt,2) = res_timing.pCorrect;
+% 
+%                         timeToFirstSpike.image(patchCt,putInd) = median(tempImageTime);
+%                         timeToFirstSpike.disc(patchCt,putInd) = median(tempDiscTime);
                        
                     end
                     if currentSurroundContrast == 0
@@ -301,7 +301,7 @@ function doLEDModSurroundAnalysis(node,varargin)
                 
                 tempDiff = (imageResponseMatrix.image.mean(ll,:) - imageResponseMatrix.disc.mean(ll,:));
                 tempNLI = tempDiff ./ ...
-                    (imageResponseMatrix.image.mean(ll,:) + imageResponseMatrix.disc.mean(ll,:));
+                    (abs(imageResponseMatrix.image.mean(ll,:)) + abs(imageResponseMatrix.disc.mean(ll,:)));
                 
                 
                 
@@ -370,12 +370,12 @@ function doLEDModSurroundAnalysis(node,varargin)
 
 
     %pCorrect nat. surround, timing vs count:
-    [~, p] = ttest(pCorrect_natural(:,1),pCorrect_natural(:,2));
-    disp('Nat. surround:')
-    disp(mean(pCorrect_natural))
-    disp(std(pCorrect_natural) ./ sqrt(patchCt))
-    disp('p = ')
-    disp(p);
+%     [~, p] = ttest(pCorrect_natural(:,1),pCorrect_natural(:,2));
+%     disp('Nat. surround:')
+%     disp(mean(pCorrect_natural))
+%     disp(std(pCorrect_natural) ./ sqrt(patchCt))
+%     disp('p = ')
+%     disp(p);
 
     % pop. NLI vs. surround contrast:
     tempMean = mean(NLIvalues.paramSurrounds,1);
@@ -399,20 +399,20 @@ function doLEDModSurroundAnalysis(node,varargin)
 
     
     
-    zeroInd = parameterizedSurroundContrasts == 0;
-    addLineToAxis(NLIvalues.paramSurrounds(:,zeroInd),NLIvalues.naturalSurround, 'dat',fig4,'k','none','o')
-    
-    tempMeanX = mean(NLIvalues.paramSurrounds(:,zeroInd));
-    tempMeanY = mean(NLIvalues.naturalSurround);
-    errX = std(NLIvalues.paramSurrounds(:,zeroInd)) / sqrt(length(NLIvalues.paramSurrounds(:,zeroInd)));
-    errY = std(NLIvalues.naturalSurround) / sqrt(length(NLIvalues.naturalSurround));
-    addLineToAxis(tempMeanX, tempMeanY, 'meanPt',fig4,'k','none','.')
-    addLineToAxis(tempMeanX + [errX, -errX], [tempMeanY tempMeanY], 'errX',fig4,'k','-','none')
-    addLineToAxis([tempMeanX, tempMeanX], tempMeanY + [errY, -errY], 'errY',fig4,'k','-','none')
-    
-    limDown = min([NLIvalues.paramSurrounds(:)', NLIvalues.naturalSurround(:)', 0]);
-    limUp = 1.1*max([NLIvalues.paramSurrounds(:)', NLIvalues.naturalSurround(:)']);
-    addLineToAxis([limDown limUp],[limDown limUp],'unity',fig4,'k','--','none')
+%     zeroInd = parameterizedSurroundContrasts == 0;
+%     addLineToAxis(NLIvalues.paramSurrounds(:,zeroInd),NLIvalues.naturalSurround, 'dat',fig4,'k','none','o')
+%     
+%     tempMeanX = mean(NLIvalues.paramSurrounds(:,zeroInd));
+%     tempMeanY = mean(NLIvalues.naturalSurround);
+%     errX = std(NLIvalues.paramSurrounds(:,zeroInd)) / sqrt(length(NLIvalues.paramSurrounds(:,zeroInd)));
+%     errY = std(NLIvalues.naturalSurround) / sqrt(length(NLIvalues.naturalSurround));
+%     addLineToAxis(tempMeanX, tempMeanY, 'meanPt',fig4,'k','none','.')
+%     addLineToAxis(tempMeanX + [errX, -errX], [tempMeanY tempMeanY], 'errX',fig4,'k','-','none')
+%     addLineToAxis([tempMeanX, tempMeanX], tempMeanY + [errY, -errY], 'errY',fig4,'k','-','none')
+%     
+%     limDown = min([NLIvalues.paramSurrounds(:)', NLIvalues.naturalSurround(:)', 0]);
+%     limUp = 1.1*max([NLIvalues.paramSurrounds(:)', NLIvalues.naturalSurround(:)']);
+%     addLineToAxis([limDown limUp],[limDown limUp],'unity',fig4,'k','--','none')
     
 
     addLineToAxis(resp_noSurround(:,1),resp_noSurround(:,2),...
@@ -430,17 +430,17 @@ function doLEDModSurroundAnalysis(node,varargin)
         'unity',fig5,'k','--','none')
     
     %Time to first spike:
-    meanIm = nanmean(timeToFirstSpike.image,1);
-    errIm = nanstd(timeToFirstSpike.image,[],1) ./ sqrt(size(timeToFirstSpike.image,1));
-    addLineToAxis(parameterizedSurroundContrasts,meanIm,'imageMean',fig11,'k','none','o')
-    addLineToAxis(parameterizedSurroundContrasts,meanIm+errIm,'imageErrUp',fig11,'k','--','none')
-    addLineToAxis(parameterizedSurroundContrasts,meanIm-errIm,'imageErrDown',fig11,'k','--','none')
-    
-    meanDisc = nanmean(timeToFirstSpike.disc,1);
-    errDisc = nanstd(timeToFirstSpike.disc,[],1) ./ sqrt(size(timeToFirstSpike.disc,1));
-    addLineToAxis(parameterizedSurroundContrasts,meanDisc,'discMean',fig11,'g','none','o')
-    addLineToAxis(parameterizedSurroundContrasts,meanDisc+errDisc,'discErrUp',fig11,'g','--','none')
-    addLineToAxis(parameterizedSurroundContrasts,meanDisc-errDisc,'discErrDown',fig11,'g','--','none')
+%     meanIm = nanmean(timeToFirstSpike.image,1);
+%     errIm = nanstd(timeToFirstSpike.image,[],1) ./ sqrt(size(timeToFirstSpike.image,1));
+%     addLineToAxis(parameterizedSurroundContrasts,meanIm,'imageMean',fig11,'k','none','o')
+%     addLineToAxis(parameterizedSurroundContrasts,meanIm+errIm,'imageErrUp',fig11,'k','--','none')
+%     addLineToAxis(parameterizedSurroundContrasts,meanIm-errIm,'imageErrDown',fig11,'k','--','none')
+%     
+%     meanDisc = nanmean(timeToFirstSpike.disc,1);
+%     errDisc = nanstd(timeToFirstSpike.disc,[],1) ./ sqrt(size(timeToFirstSpike.disc,1));
+%     addLineToAxis(parameterizedSurroundContrasts,meanDisc,'discMean',fig11,'g','none','o')
+%     addLineToAxis(parameterizedSurroundContrasts,meanDisc+errDisc,'discErrUp',fig11,'g','--','none')
+%     addLineToAxis(parameterizedSurroundContrasts,meanDisc-errDisc,'discErrDown',fig11,'g','--','none')
     
     if ~isempty(figureID)
         makeAxisStruct(fig2,['LEDmodSeg_',figureID] ,'RFSurroundFigs')

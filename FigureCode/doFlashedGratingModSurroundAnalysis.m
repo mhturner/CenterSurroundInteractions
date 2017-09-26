@@ -6,7 +6,8 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
         @(x) any(validatestring(x,expectedMetrics)));
     addParameter(ip,'exportFigs',true,@islogical);
     
-    egTraceSurroundContrast = 0.75;
+%     egTraceSurroundContrast = 0.75;
+    egTraceSurroundContrast = -0.5;
     
     ip.parse(node,varargin{:});
     node = ip.Results.node;
@@ -246,33 +247,39 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
         addLineToAxis(surroundContrastValues, meanPop(ii,:) + semPop(ii,:),['errUp',num2str(ii)],fig6,colors(ii,:),'--','none')
     end
 
+    if strcmp(cellInfo.cellType,'ONparasol')
+        cellTypeTag = 'on';
+    elseif strcmp(cellInfo.cellType,'OFFparasol')
+        cellTypeTag = '';
+    end
+    
     if (exportFigs)
-        figID = ['FGmod_',recType];
+        figID = ['FGmod_',recType,cellTypeTag];
         makeAxisStruct(fig2,figID ,'RFSurroundFigs')
         
-        figID = ['FGmod_NLI_',recType];
+        figID = ['FGmod_NLI_',recType,cellTypeTag];
         makeAxisStruct(fig3,figID ,'RFSurroundFigs')
         
-        figID = ['FGmod_TraceNoS_',recType];
+        figID = ['FGmod_TraceNoS_',recType,cellTypeTag];
         makeAxisStruct(fig4,figID ,'RFSurroundFigs')
         
-        figID = ['FGmod_TraceWithS_',recType];
+        figID = ['FGmod_TraceWithS_',recType,cellTypeTag];
         makeAxisStruct(fig5,figID ,'RFSurroundFigs')
 
-        figID = ['FGmod_pop_NLI_',recType];
+        figID = ['FGmod_pop_NLI_',recType,cellTypeTag];
         makeAxisStruct(fig6,figID ,'RFSurroundFigs')
         
         if strcmp(recType,'extracellular') %raster plots
-            figID = 'FGmod_rast_imAlone';
+            figID = ['FGmod_rast_imAlone',cellTypeTag];
             makeAxisStruct(fig7,figID ,'RFSurroundFigs')
             
-            figID = 'FGmod_rast_discAlone';
+            figID = ['FGmod_rast_discAlone',cellTypeTag];
             makeAxisStruct(fig8,figID ,'RFSurroundFigs')
             
-            figID = 'FGmod_rast_imSurr';
+            figID = ['FGmod_rast_imSurr',cellTypeTag];
             makeAxisStruct(fig9,figID ,'RFSurroundFigs')
             
-            figID = 'FGmod_rast_discSurr';
+            figID = ['FGmod_rast_discSurr',cellTypeTag];
             makeAxisStruct(fig10,figID ,'RFSurroundFigs')
         
         end
