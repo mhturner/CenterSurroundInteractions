@@ -230,6 +230,14 @@ tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
 
 gui = epochTreeGUI(tree);
 
+%% FLASHED GRATING CORRELATED SURROUND: analysis & figs
+% flag recType nodes, set grating contrast as examples
+% select cell type as parentNode
+% 
+clc; CloseAllFiguresExceptGUI();
+parentNode = gui.getSelectedEpochTreeNodes{1};
+doFlashedGratingCorrelatedSurroundAnalysis(parentNode,...
+    'metric','integrated','exportFigs',false);
 
 
 %% LINEAR EQUIVALENT DISC MIXED SURROUND: tree
