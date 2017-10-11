@@ -74,6 +74,7 @@ function doCSLNAnalysis(node,varargin)
                repeatedNode = recNode.children(cc);
            end
         end
+                
         cellInfo = getCellInfoFromEpochList(currentNode.epochList);
         recType = getRecordingTypeFromEpochList(currentNode.epochList);
         if (convertToConductance)

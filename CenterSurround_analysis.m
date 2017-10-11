@@ -66,12 +66,13 @@ gui = epochTreeGUI(tree);
 % flag recType nodes in population, example nodes are useRandomSeed = 1
 % select tree node (does ON & OFF in pop analysis together)
 % eg Off is 20161129Ec1
+% eg On is 20170822Ec2
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doCSLNAnalysis(parentNode,...
     'bins2D',15^2,... 
     'bins1D',20,...
-    'exportFigs',true,...
+    'exportFigs',false,...
     'convertToConductance',true,...
     'fitWithEquallyPopulatedBins',true);
 
@@ -231,13 +232,13 @@ tree = riekesuite.analysis.buildTree(list, {cellTypeSplit_java,'cell.label',...
 gui = epochTreeGUI(tree);
 
 %% FLASHED GRATING CORRELATED SURROUND: analysis & figs
-% flag recType nodes, set grating contrast as examples
+% flag recType nodes, set rec type as example cells
 % select cell type as parentNode
-% 
+% eg Off: 20170925Ec3
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doFlashedGratingCorrelatedSurroundAnalysis(parentNode,...
-    'metric','integrated','exportFigs',false);
+    'metric','integrated','exportFigs',true);
 
 
 %% LINEAR EQUIVALENT DISC MIXED SURROUND: tree

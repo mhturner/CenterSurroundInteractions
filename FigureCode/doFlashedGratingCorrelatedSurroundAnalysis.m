@@ -15,10 +15,17 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
     targetContrast = 0.5;
     targetIntensityValues = [0.3 0.4 0.5 0.6 0.7];
     
-    figure; clf; fig1=gca; initFig(fig1,'Center Intensity','NLI') % NLI vs. int for diff surrounds
+    egIntensityValue = 0.3;
+        
+    figure; clf; fig2=gca; initFig(fig2,'Center Intensity','NLI') % mean NLI vs. int for diff surrounds
     
-    figure; clf; fig2=gca; initFig(fig2,'Center Intensity','NLI') % MEAN NLI vs. int for diff surrounds
+    figure; clf; fig3=gca; initFig(fig3,'Time','trial') % Raster: grating, none
+    figure; clf; fig4=gca; initFig(fig4,'Time','trial') % Raster: grating, corr
+    figure; clf; fig5=gca; initFig(fig5,'Time','trial') % Raster: grating, acorr
  
+    figure; clf; fig6=gca; initFig(fig6,'Time','trial') % Raster: disc, none
+    figure; clf; fig7=gca; initFig(fig7,'Time','trial') % Raster: disc, corr
+    figure; clf; fig8=gca; initFig(fig8,'Time','trial') % Raster: disc, acorr
     
     populationNodes = {};
     ct = 0;
@@ -37,7 +44,7 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
         recType = getRecordingTypeFromEpochList(cellNode.epochList);
         
         cellNode.children.length
-        gratingNode = cellNode.childBySplitValue(0.5);
+        gratingNode = cellNode.childBySplitValue(targetContrast);
             
         respMat = nan(length(targetIntensityValues), 3, 2); %intensity x surroundType x image/disc;
         for ii = 1:length(targetIntensityValues)%for each currentIntensity
@@ -49,6 +56,25 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
 
                 imageResp = getResponseAmplitudeStats(surroundNode.childBySplitValue('image').epochList,recType);
                 discResp = getResponseAmplitudeStats(surroundNode.childBySplitValue('intensity').epochList,recType);
+                
+                if cellNode.custom.get('isExample') & (intensityNode.splitValue == egIntensityValue) %#ok<AND2>
+                    imageTrace = getMeanResponseTrace(surroundNode.childBySplitValue('image').epochList,...
+                        recType,'attachSpikeBinary',true,'PSTHsigma',10);
+                    discTrace = getMeanResponseTrace(surroundNode.childBySplitValue('intensity').epochList,...
+                        recType,'attachSpikeBinary',true,'PSTHsigma',10);
+                    switch ss
+                        case 1 %acorr
+                            addRastersToFigure(imageTrace.binary,fig5)
+                            addRastersToFigure(discTrace.binary,fig8)
+                        case 2 %corr
+                            addRastersToFigure(imageTrace.binary,fig4)
+                            addRastersToFigure(discTrace.binary,fig7)
+                        case 3 %none
+                            addRastersToFigure(imageTrace.binary,fig3)
+                            addRastersToFigure(discTrace.binary,fig6)
+                    end
+                    
+                end
 
                 respMat(ii,ss,1) = imageResp.(metric).mean;
                 respMat(ii,ss,2) = discResp.(metric).mean;
@@ -56,18 +82,38 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
             end %end for surroundTag
         end %end for currentIntensity      
         
-        nliMat(:,:,pp) = (respMat(:,:,1) - respMat(:,:,2)) ./ (respMat(:,:,1) + respMat(:,:,2));
+        nliMat(:,:,pp) = (respMat(:,:,1) - respMat(:,:,2)) ./ (respMat(:,:,1) + respMat(:,:,2)); %#ok<AGROW>
         
-        addLineToAxis(targetIntensityValues,nliMat(:,1,pp),'acorr',fig1,'r','-','o')
-        addLineToAxis(targetIntensityValues,nliMat(:,2,pp),'corr',fig1,'g','-','o')
-        addLineToAxis(targetIntensityValues,nliMat(:,3,pp),'none',fig1,'k','-','o')
     end %end for cell
 
+    %stat calcs:
+    nMat = sum(~isnan(nliMat),3);
+    meanMat = nanmean(nliMat,3);
+    errMat = nanstd(nliMat,[],3) ./ sqrt(nMat);
+
+    addLineToAxis(targetIntensityValues,meanMat(:,1),'acorr',fig2,'r','-','o')
+    addLineToAxis(targetIntensityValues,meanMat(:,1) + errMat(:,1),'acorr_eUp',fig2,'r','--','none')
+    addLineToAxis(targetIntensityValues,meanMat(:,1) - errMat(:,1),'acorr_eDown',fig2,'r','--','none')
+
+    addLineToAxis(targetIntensityValues,meanMat(:,2),'corr',fig2,'g','-','o')
+    addLineToAxis(targetIntensityValues,meanMat(:,2) + errMat(:,2),'corr_eUp',fig2,'g','--','none')
+    addLineToAxis(targetIntensityValues,meanMat(:,2) - errMat(:,2),'corr_eDown',fig2,'g','--','none')
     
-    addLineToAxis(targetIntensityValues,nanmean(nliMat(:,1,:),3),'acorr',fig2,'r','-','o')
-    addLineToAxis(targetIntensityValues,nanmean(nliMat(:,2,:),3),'corr',fig2,'g','-','o')
-    addLineToAxis(targetIntensityValues,nanmean(nliMat(:,3,:),3),'none',fig2,'k','-','o')
+    addLineToAxis(targetIntensityValues,meanMat(:,3),'none',fig2,'k','-','o')
+    addLineToAxis(targetIntensityValues,meanMat(:,3) + errMat(:,3),'none_eUp',fig2,'k','--','none')
+    addLineToAxis(targetIntensityValues,meanMat(:,3) - errMat(:,3),'none_eDown',fig2,'k','--','none')
+    
+    
     if (exportFigs)
+        makeAxisStruct(fig2,'FGcorrS_summary' ,'RFSurroundFigs')
+        
+        makeAxisStruct(fig3,'FGcorrS_rast_gn' ,'RFSurroundFigs')
+        makeAxisStruct(fig4,'FGcorrS_rast_gc' ,'RFSurroundFigs')
+        makeAxisStruct(fig5,'FGcorrS_rast_ga' ,'RFSurroundFigs')
+        
+        makeAxisStruct(fig6,'FGcorrS_rast_dn' ,'RFSurroundFigs')
+        makeAxisStruct(fig7,'FGcorrS_rast_dc' ,'RFSurroundFigs')
+        makeAxisStruct(fig8,'FGcorrS_rast_da' ,'RFSurroundFigs')
 
     end
 end
