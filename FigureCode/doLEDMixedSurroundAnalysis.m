@@ -66,12 +66,13 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     allDiffMatrix = [];
     
     allEqContrast = [];
+    allSpatialContrast = [];
+    allImageResponseMatrix = [];
     
     p_none = [];
     p_nat = [];
     p_mix = [];
     imageCt = 0;
-    figure(30); clf;
     for pp = 1:length(populationNodes) % for cell in pop
         cellNode = populationNodes{pp};
         cellInfo = getCellInfoFromEpochList(cellNode.epochList);
@@ -80,6 +81,7 @@ function doLEDMixedSurroundAnalysis(node,varargin)
         ImageResponseMatrix = []; % rows = center image, 3 columns = surround condition ([none, natural, mixed])
         DiscResponseMatrix = [];
         eqContrast = [];
+        spatialContrast = [];
         for imageInd = 1:cellNode.children.length % for image ID
             imageCt = imageCt + 1;
             imageNode = cellNode.children(imageInd);
@@ -89,6 +91,12 @@ function doLEDMixedSurroundAnalysis(node,varargin)
                 bg = patchNode.epochList.firstValue.protocolSettings('backgroundIntensity');
                 eqContrast(patchInd) = (eqInt - bg) / bg;
                 
+                patchLoc = convertJavaArrayList(patchNode.epochList.firstValue.protocolSettings('currentCenterLocation'));
+                imageName = patchNode.epochList.firstValue.protocolSettings('imageName');
+                imageRes = getNaturalImagePatchFromLocation(patchLoc,imageName,'imageSize',[300 300]);
+                %spatialContrast = stdev / mean
+                spatialContrast(patchInd) = std(imageRes.images{1}(:)) / mean(imageRes.images{1}(:));
+
                 %get image and disc responses, no surround:
                 noSurroundNode = patchNode.childBySplitValue('none');
                 imageResp = getResponseAmplitudeStats(noSurroundNode.childBySplitValue('image').epochList,recType);
@@ -137,7 +145,11 @@ function doLEDMixedSurroundAnalysis(node,varargin)
             allNLIMatrix = cat(1,allNLIMatrix,NLIresultsMatrix);
             meanNLI(imageCt,:) = nanmean(NLIresultsMatrix,1);
             
+            allImageResponseMatrix = cat(1,allImageResponseMatrix,ImageResponseMatrix);
+            
             allEqContrast = cat(2,allEqContrast,eqContrast);
+            allSpatialContrast = cat(2,allSpatialContrast,spatialContrast);
+            
             
             %R2 values:
             %no surround
@@ -165,6 +177,52 @@ function doLEDMixedSurroundAnalysis(node,varargin)
             
         end % for image ID
     end % for cell in pop
+
+    % response vs mean center intensity
+    figure; clf;
+    fig11=gca;
+    set(fig11,'XScale','linear','YScale','linear')
+    set(0, 'DefaultAxesFontSize', 14)
+    set(get(fig11,'XLabel'),'String','Relative center intensity')
+    set(get(fig11,'YLabel'),'String','Response (norm)')
+    set(gcf, 'WindowStyle', 'docked')
+    
+    noBins = 12;
+    [~,binMean,~,binID] = histcounts_equallyPopulatedBins(allEqContrast,noBins);
+    
+    highContrastInds = find(allSpatialContrast < median(allSpatialContrast));
+    
+    resMean = struct;
+    resErr = struct;
+    for bb = 1:noBins
+        tempInds = find(binID == bb);
+        pullInds = intersect(tempInds,highContrastInds);
+        resMean.none(bb) = mean(allImageResponseMatrix(pullInds,1));
+        resMean.nat(bb) = mean(allImageResponseMatrix(pullInds,2));
+        resMean.mix(bb) = mean(allImageResponseMatrix(pullInds,3));
+        
+        resErr.none(bb) = std(allImageResponseMatrix(pullInds,1)) ./ sqrt(length(pullInds));
+        resErr.nat(bb) = std(allImageResponseMatrix(pullInds,2)) ./ sqrt(length(pullInds));
+        resErr.mix(bb) = std(allImageResponseMatrix(pullInds,3)) ./ sqrt(length(pullInds));
+    end
+    tempMean = resMean.none ./max(resMean.none);
+    tempErr = resErr.none ./max(resMean.none);
+    addLineToAxis(binMean,tempMean,'none',fig11,'k','-','.')
+    addLineToAxis(binMean,tempMean + tempErr,'none_eUp',fig11,'k','--','none')
+    addLineToAxis(binMean,tempMean - tempErr,'none_eDown',fig11,'k','--','none')
+    
+    tempMean = resMean.nat ./max(resMean.nat);
+    tempErr = resErr.nat ./max(resMean.nat);
+    addLineToAxis(binMean,tempMean,'nat',fig11,'g','-','.')
+    addLineToAxis(binMean,tempMean + tempErr,'nat_eUp',fig11,'g','--','none')
+    addLineToAxis(binMean,tempMean - tempErr,'nat_eDown',fig11,'g','--','none')
+    
+%     tempMean = resMean.mix ./max(resMean.mix);
+%     tempErr = resErr.mix ./max(resMean.mix);
+%     addLineToAxis(binMean,tempMean,'mix',fig11,'r','-','.')
+%     addLineToAxis(binMean,tempMean + tempErr,'mix_eUp',fig11,'r','--','none')
+%     addLineToAxis(binMean,tempMean - tempErr,'mix_eDown',fig11,'r','--','none')
+
     
    % r-squared between disc and image
     figure(10); clf;
@@ -296,6 +354,8 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     makeAxisStruct(fig8,'MixSur_mix' ,'RFSurroundFigs')
     
     makeAxisStruct(fig9,'MixSur_vsCen' ,'RFSurroundFigs')
+    
+    makeAxisStruct(fig11,'MixSur_RvsCen' ,'RFSurroundFigs')
     
     end
     

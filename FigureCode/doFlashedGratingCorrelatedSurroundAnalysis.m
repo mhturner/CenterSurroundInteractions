@@ -13,7 +13,7 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
     
     
     targetContrast = 0.5;
-    targetIntensityValues = [0.3 0.4 0.5 0.6 0.7];
+    targetIntensityValues = [0.3 0.4 0.5 0.6];
     
     egIntensityValue = 0.3;
         
@@ -43,7 +43,6 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
         cellInfo = getCellInfoFromEpochList(cellNode.epochList);
         recType = getRecordingTypeFromEpochList(cellNode.epochList);
         
-        cellNode.children.length
         gratingNode = cellNode.childBySplitValue(targetContrast);
             
         respMat = nan(length(targetIntensityValues), 3, 2); %intensity x surroundType x image/disc;

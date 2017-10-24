@@ -104,7 +104,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};  
 doCSNaturalImageLuminanceAnalysis(parentNode,...
-    'exportFigs',true);
+    'exportFigs',false);
 
 
 %% CORRELATED CS NOISE: tree
@@ -134,7 +134,17 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};  
 doCorrelatedCSNoiseAnalysis(parentNode,...
-    'exportFigs',true);
+    'exportFigs',false);
+
+%% CORRELATED CS additivity: analysis & figures
+% flag recType nodes in population, example nodes are at CorrelatedCSNoise
+%       node
+% select cell type node (does ON & OFF in pop analysis together)
+% eg cell
+clc; CloseAllFiguresExceptGUI();
+parentNode = gui.getSelectedEpochTreeNodes{1};  
+doCorrelatedCSadditivityAnalysis(parentNode,...
+    'exportFigs',false);
 
 %% EXPANDING SPOTS: tree
 
@@ -239,7 +249,6 @@ clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doFlashedGratingCorrelatedSurroundAnalysis(parentNode,...
     'metric','integrated','exportFigs',true);
-
 
 %% LINEAR EQUIVALENT DISC MIXED SURROUND: tree
 list = loader.loadEpochList([dataFolder,'LEDMixedSurround.mat'],dataFolder);

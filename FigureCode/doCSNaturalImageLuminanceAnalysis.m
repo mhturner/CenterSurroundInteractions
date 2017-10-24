@@ -30,6 +30,8 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     
     figure; clf; fig13=gca; initFig(fig13,'Sparsity natural CS','Sparsity shuffled CS') %sparsity CS corr vs shuffled
     
+    figure(30); clf; 
+    
     populationNodes = {};
     ct = 0;
     for nn = 1:node.descendentsDepthFirst.length
@@ -84,6 +86,19 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
             shuffleSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
             shuffleCenterSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Center-Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
 
+            figure(30);
+            fh = subplot(3,3,pp);
+            measuredResponse = controlCenterSurround.mean;
+            linSum = controlCenter.mean + controlSurround.mean;
+            binAndPlotPopulationData(measuredResponse,linSum,50,fh,'b')
+            limDown = min([measuredResponse,linSum]); limUp = max([measuredResponse,linSum]);
+            addLineToAxis([limDown,limUp],[limDown,limUp],'unity',fh,'k','--','none');
+            if pp == length(populationNodes)
+                xlabel('C/S'); ylabel('C + S')
+            end
+            set(fh,'FontSize',10)
+            
+            
             %timing stuff:
             timingEpoch = controlCSNode.childBySplitValue('Center').epochList.firstValue;
             frameRate = timingEpoch.protocolSettings('background:Microdisplay Stage@localhost:monitorRefreshRate');
