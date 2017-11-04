@@ -100,6 +100,8 @@ function doCSLNAnalysis(node,varargin)
         
         filters.center(pp,:) = center.LinearFilter;
         filters.surround(pp,:) = surround.LinearFilter;
+        
+        continue
 
         if currentNode.custom.get('isExample')
             %Linear filters
@@ -311,6 +313,7 @@ function doCSLNAnalysis(node,varargin)
         end %example plotting of model-free additivity stuff
 
     end
+    save('OffParasolExcitatoryFilters.mat','filters')
     
     %Population data, indep vs. shared:
     %   On...
@@ -396,6 +399,7 @@ function doCSLNAnalysis(node,varargin)
     [rho, pval] = corr(relativeSurroundWeight(OFFcellInds),relativeImprovement(OFFcellInds)');
     disp('Surr. weight corr with improvement, OFF:')
     disp([rho, pval])
+    
 
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
     if (exportFigs)

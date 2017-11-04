@@ -27,6 +27,8 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
     figure; clf; fig7=gca; initFig(fig7,'Time','trial') % Raster: disc, corr
     figure; clf; fig8=gca; initFig(fig8,'Time','trial') % Raster: disc, acorr
     
+    figure; clf; fig9=gca; initFig(fig9,'no mean, add mean, add surround','resp. diff. (spk)') % resp. diff by category, lines
+    
     populationNodes = {};
     ct = 0;
     for nn = 1:node.descendentsDepthFirst.length
@@ -38,6 +40,8 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
     end
 
     nliMat = [];
+    diffMat = [];
+
     for pp = 1:length(populationNodes)
         cellNode = populationNodes{pp};
         cellInfo = getCellInfoFromEpochList(cellNode.epochList);
@@ -51,7 +55,15 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
             intensityNode = gratingNode.childBySplitValue(targetIntensityValues(ii));
 
             for ss = 1:3 %for each surround type (acorr, corr, none)
-                surroundNode = intensityNode.children(ss);
+                switch ss
+                    case 1
+                        surroundNode = intensityNode.childBySplitValue('acorr');
+                    case 2
+                        surroundNode = intensityNode.childBySplitValue('corr');
+                    case 3
+                        surroundNode = intensityNode.childBySplitValue('none');
+                end
+                
 
                 imageResp = getResponseAmplitudeStats(surroundNode.childBySplitValue('image').epochList,recType);
                 discResp = getResponseAmplitudeStats(surroundNode.childBySplitValue('intensity').epochList,recType);
@@ -81,11 +93,62 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
             end %end for surroundTag
         end %end for currentIntensity      
         
-        nliMat(:,:,pp) = (respMat(:,:,1) - respMat(:,:,2)) ./ (respMat(:,:,1) + respMat(:,:,2)); %#ok<AGROW>
-        
+        diffMat(:,:,pp) = (respMat(:,:,1) - respMat(:,:,2)); %#ok<AGROW>
+%         nliMat(:,:,pp) = (respMat(:,:,1) - respMat(:,:,2)) ./ (respMat(:,:,1) + respMat(:,:,2)); %#ok<AGROW>
+tempMat = [respMat(:,:,1), respMat(:,:,2)];
+normFactor = mean(tempMat(:));
+        nliMat(:,:,pp) = (respMat(:,:,1) - respMat(:,:,2)) ./ normFactor; %#ok<AGROW>
     end %end for cell
 
-    %stat calcs:
+    
+    useMat = nliMat;
+    intDrawInd = 1; %1 = 0.3, strongest negative mean
+    %means, errs in categories
+    noMean.meanResp = mean(useMat(3,3,:),3);
+    noMean.errResp = std(useMat(3,3,:),[],3) ./ sqrt(size(useMat,3));
+    
+    withMean.meanResp = mean(useMat(intDrawInd,3,:),3);
+    withMean.errResp = std(useMat(intDrawInd,3,:),[],3) ./ sqrt(size(useMat,3));
+    
+    corrS.meanResp = mean(useMat(intDrawInd,2,:),3);
+    corrS.errResp = std(useMat(intDrawInd,2,:),[],3) ./ sqrt(size(useMat,3));
+    
+    acorrS.meanResp = mean(useMat(intDrawInd,1,:),3);
+    acorrS.errResp = std(useMat(intDrawInd,1,:),[],3) ./ sqrt(size(useMat,3));
+    
+    addLineToAxis(1, noMean.meanResp,'noMean_mean',fig9,'k','none','s')
+    addLineToAxis([1, 1], noMean.meanResp + [noMean.errResp, -noMean.errResp],...
+        'noMean_err',fig9,'k','-','none')
+    
+    addLineToAxis(2, withMean.meanResp,'withMean_mean',fig9,'k','none','s')
+    addLineToAxis([2, 2], withMean.meanResp + [withMean.errResp, -withMean.errResp],...
+        'withMean_err',fig9,'k','-','none')
+    
+    addLineToAxis(3, corrS.meanResp,'corrS_mean',fig9,'g','none','s')
+    addLineToAxis([3, 3], corrS.meanResp + [corrS.errResp, -corrS.errResp],...
+        'corrS_err',fig9,'g','-','none')
+    
+    addLineToAxis(3, acorrS.meanResp,'acorrS_mean',fig9,'r','none','s')
+    addLineToAxis([3, 3], acorrS.meanResp + [acorrS.errResp, -acorrS.errResp],...
+        'acorrS_err',fig9,'r','-','none')
+    
+    [~, p] = ttest(useMat(3,3,:), useMat(intDrawInd,3,:)) %addition of mean
+    [~, p] = ttest(useMat(intDrawInd,3,:), useMat(intDrawInd,2,:)) %addition of corr S
+    [~, p] = ttest(useMat(intDrawInd,3,:), useMat(intDrawInd,1,:)) %addition of acorr S
+    [~, p] = ttest(useMat(intDrawInd,2,:), useMat(intDrawInd,1,:)) %compare corr and acorr s
+    for cc = 1:size(useMat,3)
+        %lines
+        addMeanLine = [useMat(3,3,cc), useMat(intDrawInd,3,cc)];
+        addLineToAxis([1,2], addMeanLine,['addMeanLine',num2str(cc)],fig9,'k','-','o')
+
+        corrLine = [useMat(intDrawInd,3,cc), useMat(intDrawInd,2,cc)];
+        addLineToAxis([2,3], corrLine,['corrLine',num2str(cc)],fig9,'g','-','o')
+
+        acorrLine = [useMat(intDrawInd,3,cc), useMat(intDrawInd,1,cc)];
+        addLineToAxis([2,3], acorrLine,['acorrLine',num2str(cc)],fig9,'r','-','o')
+    end
+    
+    %NLI stat calcs:
     nMat = sum(~isnan(nliMat),3);
     meanMat = nanmean(nliMat,3);
     errMat = nanstd(nliMat,[],3) ./ sqrt(nMat);
@@ -113,6 +176,8 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
         makeAxisStruct(fig6,'FGcorrS_rast_dn' ,'RFSurroundFigs')
         makeAxisStruct(fig7,'FGcorrS_rast_dc' ,'RFSurroundFigs')
         makeAxisStruct(fig8,'FGcorrS_rast_da' ,'RFSurroundFigs')
+        
+        makeAxisStruct(fig9,'FGcorrS_category' ,'RFSurroundFigs')
 
     end
 end

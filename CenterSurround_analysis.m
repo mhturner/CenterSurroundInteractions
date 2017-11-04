@@ -194,9 +194,10 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDModSurroundAnalysis(parentNode,...
-    'metric','integrated','figureID','OFFspk');
+    'metric','integrated');
 
-% 
+% ,'figureID','OFFspk'
+% ,'figureID' ,'OFFspk_ct'
 %% FLASHED GRATING MOD SURROUND: tree
 list = loader.loadEpochList([dataFolder,'FlashedGratingModSurround.mat'],dataFolder);
 
@@ -248,7 +249,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doFlashedGratingCorrelatedSurroundAnalysis(parentNode,...
-    'metric','integrated','exportFigs',true);
+    'metric','integrated','exportFigs',false);
 
 %% LINEAR EQUIVALENT DISC MIXED SURROUND: tree
 list = loader.loadEpochList([dataFolder,'LEDMixedSurround.mat'],dataFolder);
@@ -273,13 +274,14 @@ gui = epochTreeGUI(tree);
 
 %% LINEAR EQUIVALENT DISC MIXED SURROUND: analysis
 % flag recType nodes
-% set image ID as example. E.g. = 
+% set image ID as example
+% E.g. = 20170726Ec3, image 02733
 % select cell type as parentNode
 
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDMixedSurroundAnalysis(parentNode,...
-    'metric','integrated','exportFigs',false);
+    'metric','integrated','exportFigs',true);
 
 %% CONTRAST RESPONSE SPOTS: tree
 

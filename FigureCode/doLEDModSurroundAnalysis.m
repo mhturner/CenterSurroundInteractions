@@ -149,6 +149,7 @@ function doLEDModSurroundAnalysis(node,varargin)
     
     pCorrect_natural = [];
     
+    spCt = 0;
     patchCt = 0;
     for pp = 1:length(populationNodes)
         cellNode = populationNodes{pp};
@@ -167,9 +168,12 @@ function doLEDModSurroundAnalysis(node,varargin)
             imageResponseMatrix.disc.err = nan(noPatches,noSurrounds-1);
             pCorrect.timingCode = nan(noPatches,noSurrounds-1);
             pCorrect.countCode = nan(noPatches,noSurrounds-1);
+            
 
             surroundContrastValues = nan(noPatches,noSurrounds-1);
             for ll = 1:noPatches
+%                 figure(40); clf; colors = hsv(10);
+                
                 patchCt = patchCt + 1;
                 patchNode = imageNode.children(ll);
                 parameterizedSurroundContrasts = convertJavaArrayList(...
@@ -260,6 +264,30 @@ function doLEDModSurroundAnalysis(node,varargin)
                     if currentSurroundContrast == 0
                        resp_noSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
                     end
+                    
+                    imageTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('image').epochList,recType);
+                    discTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('intensity').epochList,recType);
+                    
+%                     if currentSurroundContrast == 0
+% %                         newColor = 'k';
+% %                         spCt = spCt + 1;
+%                         figure(41); subplot(3,2,spCt);
+%                         hold on;
+%                         plot(imageTrace.mean(2000:4000),'k');
+%                         plot(discTrace.mean(2000:4000),'b');
+%                     elseif currentSurroundContrast == -0.5
+%                         spCt = spCt + 1;
+%                         figure(42); subplot(3,2,spCt);
+%                         hold on;
+%                         plot(imageTrace.mean(2000:4000),'k');
+%                         plot(discTrace.mean(2000:4000),'b');
+% %                         newColor = colors(ss,:);
+%                     end
+%                     figure(40); subplot(1,2,1); hold on;
+%                     plot(imageTrace.mean(2000:4000),'Color',newColor);
+%                     subplot(1,2,2); hold on;
+%                     plot(discTrace.mean(2000:4000),'Color',newColor);
+                    
 
                     if patchNode.custom.get('isExample')
                         addLineToAxis(0,0,cellInfo.cellID,fig2,'k','none','none')
@@ -300,8 +328,11 @@ function doLEDModSurroundAnalysis(node,varargin)
                 IntDiff = IntDiff ./ backgroundInt; %normalize by image background
                 
                 tempDiff = (imageResponseMatrix.image.mean(ll,:) - imageResponseMatrix.disc.mean(ll,:));
-                tempNLI = tempDiff ./ ...
-                    (abs(imageResponseMatrix.image.mean(ll,:)) + abs(imageResponseMatrix.disc.mean(ll,:)));
+% %                 tempNLI = tempDiff ./ ...
+% %                     (abs(imageResponseMatrix.image.mean(ll,:)) + abs(imageResponseMatrix.disc.mean(ll,:)));
+
+                normFactor = max([abs(imageResponseMatrix.image.mean(ll,:)), abs(imageResponseMatrix.disc.mean(ll,:))]);
+                tempNLI = tempDiff ./ (normFactor);
                 
                 
                 
@@ -350,6 +381,7 @@ function doLEDModSurroundAnalysis(node,varargin)
 
     %NLI vs (Ic - Is)
     binAndPlotEquallyPopulatedBins(AllIntDiff(:),AllNLI(:), 9, fig13)
+%     binAndPlotEquallyPopulatedBins(AllIntDiff(:),AllRespDiff(:), 9, fig13)
     
 
     
@@ -415,6 +447,7 @@ function doLEDModSurroundAnalysis(node,varargin)
 %     addLineToAxis([limDown limUp],[limDown limUp],'unity',fig4,'k','--','none')
     
 
+colors = pmkmp(10);
     addLineToAxis(resp_noSurround(:,1),resp_noSurround(:,2),...
         'noSurround',fig5,colors(1,:),'none','.')
     addLineToAxis(resp_natSurround(:,1),resp_natSurround(:,2),...
@@ -443,30 +476,30 @@ function doLEDModSurroundAnalysis(node,varargin)
 %     addLineToAxis(parameterizedSurroundContrasts,meanDisc-errDisc,'discErrDown',fig11,'g','--','none')
     
     if ~isempty(figureID)
-        makeAxisStruct(fig2,['LEDmodSeg_',figureID] ,'RFSurroundFigs')
-        makeAxisStruct(fig3,['LEDmodS_NLIvsS_',figureID] ,'RFSurroundFigs')
-        makeAxisStruct(fig4,['LEDmodS_NLInat_',figureID] ,'RFSurroundFigs')
-        makeAxisStruct(fig5,['LEDmodS_natScatter_',figureID] ,'RFSurroundFigs')
+%         makeAxisStruct(fig2,['LEDmodSeg_',figureID] ,'RFSurroundFigs')
+%         makeAxisStruct(fig3,['LEDmodS_NLIvsS_',figureID] ,'RFSurroundFigs')
+%         makeAxisStruct(fig4,['LEDmodS_NLInat_',figureID] ,'RFSurroundFigs')
+%         makeAxisStruct(fig5,['LEDmodS_natScatter_',figureID] ,'RFSurroundFigs')
 %         makeAxisStruct(fig6,['LEDmodS_DvsS_',figureID] ,'RFSurroundFigs')
         makeAxisStruct(fig13,['LEDmodS_IntDiff_',figureID] ,'RFSurroundFigs')
-        if strcmp(recType,'extracellular') %raster plots
-            figID = 'LEDmodS_rast_imAlone';
-            makeAxisStruct(fig7,figID ,'RFSurroundFigs')
-            
-            figID = 'LEDmodS_rast_discAlone';
-            makeAxisStruct(fig8,figID ,'RFSurroundFigs')
-            
-            figID = 'LEDmodS_rast_imSurr';
-            makeAxisStruct(fig9,figID ,'RFSurroundFigs')
-            
-            figID = 'LEDmodS_rast_discSurr';
-            makeAxisStruct(fig10,figID ,'RFSurroundFigs')
-            
-            figID = 'LEDmodS_firstSpike';
-            makeAxisStruct(fig11,figID ,'RFSurroundFigs')
-            
-            figID = 'LEDmodS_KNN_pCorr';
-            makeAxisStruct(fig12,figID ,'RFSurroundFigs')
-        end
+%         if strcmp(recType,'extracellular') %raster plots
+%             figID = 'LEDmodS_rast_imAlone';
+%             makeAxisStruct(fig7,figID ,'RFSurroundFigs')
+%             
+%             figID = 'LEDmodS_rast_discAlone';
+%             makeAxisStruct(fig8,figID ,'RFSurroundFigs')
+%             
+%             figID = 'LEDmodS_rast_imSurr';
+%             makeAxisStruct(fig9,figID ,'RFSurroundFigs')
+%             
+%             figID = 'LEDmodS_rast_discSurr';
+%             makeAxisStruct(fig10,figID ,'RFSurroundFigs')
+%             
+%             figID = 'LEDmodS_firstSpike';
+%             makeAxisStruct(fig11,figID ,'RFSurroundFigs')
+%             
+%             figID = 'LEDmodS_KNN_pCorr';
+%             makeAxisStruct(fig12,figID ,'RFSurroundFigs')
+%         end
     end
 end
