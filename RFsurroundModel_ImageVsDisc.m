@@ -1,9 +1,9 @@
 %% Compute new RF surround model results
 clear all; close all; clc;
 
-outputDir = '~/Documents/MATLAB/RFSurround/resources/RFsurroundNLIresults/';
-resources_dir = '~/Documents/MATLAB/turner-package/resources/';
-IMAGES_DIR_VH = '~/Documents/MATLAB/MHT-analysis/resources/vanhateren_iml/';
+outputDir = '~/Dropbox/RiekeLab/Analysis/MATLAB/RFSurround/resources/RFsurroundNLIresults/';
+resources_dir = '~/Dropbox/RiekeLab/Analysis/MATLAB/turner-package/resources/';
+IMAGES_DIR_VH = '~/Dropbox/RiekeLab/Analysis/MATLAB/MHT-analysis/resources/vanhateren_iml/';
 load([resources_dir, 'dovesFEMstims_20160422.mat'])
 
 for currentImageIndex = 1%:30
@@ -300,10 +300,10 @@ clear all; close all; clc;
 egIm = 1;
 
 
-resources_dir = '~/Documents/MATLAB/turner-package/resources/';
-IMAGES_DIR_VH = '~/Documents/MATLAB/MHT-analysis/resources/vanhateren_iml/';
+resources_dir = '~/Dropbox/RiekeLab/Analysis/MATLAB/turner-package/resources/';
+IMAGES_DIR_VH = '~/Dropbox/RiekeLab/Analysis/MATLAB/MHT-analysis/resources/vanhateren_iml/';
 load([resources_dir, 'dovesFEMstims_20160422.mat'])
-figDir = '~/Documents/MATLAB/RFSurround/resources/TempFigs/'; %for saved eps figs
+figDir = '~/Dropbox/RiekeLab/Analysis/MATLAB/RFSurround/resources/TempFigs/'; %for saved eps figs
 
 ct = 0;
 results.natDiff = [];
@@ -389,85 +389,6 @@ figID = ['MixSurStats_pop'];
 makeAxisStruct(fig5,figID ,'RFSurroundFigs')
 
 
-%% R-squared between image and disc responses under three surround conditions:
-
-noPts = 50;
-
-figure(15); clf;
-ct = 0;
-p_none = [];
-p_nat = [];
-p_mix = [];
-for currentImageIndex = 1:30
-    
-    if currentImageIndex == 12
-        continue
-    end
-    ct = ct + 1;
-    load(['ImageDiscModel_',num2str(currentImageIndex),'_20170718.mat'])
-
-    
-% %     ssTot=sum((response.Image-mean(response.Image)).^2); 
-% %     ssErr=sum((response.Image - response.Disc).^2);
-% %     rSquared=1-ssErr/ssTot;
-% %     p_none(ct) = rSquared;
-% %     
-% %     ssTot=sum((response.ImageMatchedSurround-mean(response.ImageMatchedSurround)).^2); 
-% %     ssErr=sum((response.ImageMatchedSurround - response.DiscMatchedSurround).^2);
-% %     rSquared=1-ssErr/ssTot;
-% %     p_nat(ct) = rSquared;
-% %     
-% %     ssTot=sum((response.ImageMixedSurround-mean(response.ImageMixedSurround)).^2); 
-% %     ssErr=sum((response.ImageMixedSurround - response.DiscMixedSurround).^2);
-% %     rSquared=1-ssErr/ssTot;
-% %     p_mix(ct) = rSquared;
-
-    pickInds = randsample(1:length(response.Image),noPts);
-    response.Image = response.Image(pickInds);
-    response.Disc = response.Disc(pickInds);
-    ssTot=sum((response.Image-mean(response.Image)).^2); 
-    ssErr=sum((response.Image - response.Disc).^2);
-    rSquared=1-ssErr/ssTot;
-    p_none(ct) = rSquared;
-    
-    response.ImageMatchedSurround = response.ImageMatchedSurround(pickInds);
-    response.DiscMatchedSurround = response.DiscMatchedSurround(pickInds);
-    ssTot=sum((response.ImageMatchedSurround-mean(response.ImageMatchedSurround)).^2); 
-    ssErr=sum((response.ImageMatchedSurround - response.DiscMatchedSurround).^2);
-    rSquared=1-ssErr/ssTot;
-    p_nat(ct) = rSquared;
-    
-    response.ImageMixedSurround = response.ImageMixedSurround(pickInds);
-    response.DiscMixedSurround = response.DiscMixedSurround(pickInds);
-    ssTot=sum((response.ImageMixedSurround-mean(response.ImageMixedSurround)).^2); 
-    ssErr=sum((response.ImageMixedSurround - response.DiscMixedSurround).^2);
-    rSquared=1-ssErr/ssTot;
-    p_mix(ct) = rSquared;
-
-end
-
-subplot(131); hold on;
-plot(p_none,p_nat,'go')
-plot([0 1],[0 1],'k--')
-xlabel('R2, no surround'); ylabel('R2, nat surround');
-xlim([0 1]); ylim([0 1]);
-
-subplot(132); hold on;
-plot(p_none,p_mix,'ro')
-plot([0 1],[0 1],'k--')
-xlabel('R2, no surround'); ylabel('R2, mixed surround');
-% xlim([0 1]); ylim([0 1]);
-
-subplot(133); hold on;
-plot(p_nat,p_mix,'ko')
-plot([0 1],[0 1],'k--')
-xlabel('R2, nat surround'); ylabel('R2, mixed surround');
-% xlim([0 1]); ylim([0 1]);
-
-
-[h, p] = ttest(p_none,p_nat);
-[h, p] = ttest(p_none,p_mix);
-[h, p] = ttest(p_nat,p_mix);
 
 
 %% mean NLIs across all patches within an image, for different surround conditions
@@ -519,17 +440,24 @@ for currentImageIndex = 1:30
     
 
     %calc NLIs:
-    NLI_noSurround = (response.Image - response.Disc) ./...
-        (response.Image + response.Disc);
-    
-    NLI_naturalSurround = (response.ImageMatchedSurround - response.DiscMatchedSurround) ./...
-        (response.ImageMatchedSurround + response.DiscMatchedSurround);
+% %     NLI_noSurround = (response.Image - response.Disc) ./...
+% %         (response.Image + response.Disc);
+% %     
+% %     NLI_naturalSurround = (response.ImageMatchedSurround - response.DiscMatchedSurround) ./...
+% %         (response.ImageMatchedSurround + response.DiscMatchedSurround);
+% % 
+% %     NLI_mixedSurround = (response.ImageMixedSurround - response.DiscMixedSurround) ./...
+% %         (response.ImageMixedSurround + response.DiscMixedSurround);
 
-    NLI_mixedSurround = (response.ImageMixedSurround - response.DiscMixedSurround) ./...
-        (response.ImageMixedSurround + response.DiscMixedSurround);
+
+    NLI_noSurround = (response.Image - response.Disc);
     
-%     eqContrast = (stats.centerMean - stats.imageMean) ./ stats.imageMean;
-eqContrast = (stats.centerMean - stats.imageMean);
+    NLI_naturalSurround = (response.ImageMatchedSurround - response.DiscMatchedSurround);
+
+    NLI_mixedSurround = (response.ImageMixedSurround - response.DiscMixedSurround);
+
+    
+    eqContrast = (stats.centerMean - stats.imageMean) ./ stats.imageMean;
     allEqContrast = cat(1,allEqContrast,eqContrast');
     
     meanNLI_none = cat(1,meanNLI_none,nanmean(NLI_noSurround));
@@ -577,68 +505,7 @@ eqContrast = (stats.centerMean - stats.imageMean);
     high.nn.mix = cat(1,high.nn.mix,tempnn);
 
 end
-figure; clf;
-fig7=gca;
-set(fig7,'XScale','linear','YScale','linear')
-set(0, 'DefaultAxesFontSize', 12)
-set(get(fig7,'XLabel'),'String','NLI')
-set(get(fig7,'YLabel'),'String','Cumulative prob.')
 
-edges = linspace(-1,1,100);
-binCtrs = edges(1:end - 1) + mean(diff(edges));
-[nn_none, ~] = histcounts(allNLIMatrix(:,1),edges,'normalization','probability');
-[nn_nat, ~] = histcounts(allNLIMatrix(:,2),edges,'normalization','probability');
-[nn_mix, ~] = histcounts(allNLIMatrix(:,3),edges,'normalization','probability');
-
-addLineToAxis(binCtrs,cumsum(nn_none),'none',fig7,'k','-','none')
-addLineToAxis(binCtrs,cumsum(nn_nat),'nat',fig7,'g','-','none')
-addLineToAxis(binCtrs,cumsum(nn_mix),'mix',fig7,'r','-','none')
-
-%% NLI vs mean center intensity
-figure; clf;
-fig9=gca;
-set(fig9,'XScale','linear','YScale','linear')
-set(0, 'DefaultAxesFontSize', 14)
-set(get(fig9,'XLabel'),'String','Center mean')
-set(get(fig9,'YLabel'),'String','NLI')
-set(gcf, 'WindowStyle', 'docked')
-
-noBins = 20;
-keepInds = (find(~isnan(allNLIMatrix(:,1))));
-binAndPlotEquallyPopulatedBins(allEqContrast(keepInds),allNLIMatrix(keepInds,1),...
-    noBins,fig9,'k','none')    
-
-keepInds = (find(~isnan(allNLIMatrix(:,2))));
-binAndPlotEquallyPopulatedBins(allEqContrast(keepInds),allNLIMatrix(keepInds,2),...
-    noBins,fig9,'g','nat')
-
-keepInds = (find(~isnan(allNLIMatrix(:,3))));
-binAndPlotEquallyPopulatedBins(allEqContrast(keepInds),allNLIMatrix(keepInds,3),...
-    noBins,fig9,'r','mix')
-
-makeAxisStruct(fig9,'MixSurModel_vsCen' ,'RFSurroundFigs')
-%%
-figure(3); clf;
-subplot(131);
-plot(abs(allEqContrast),allNLIMatrix(:,1),'k.')
-
-subplot(132);
-plot(abs(allEqContrast),allNLIMatrix(:,2),'g.')
-
-subplot(133);
-plot(abs(allEqContrast),allNLIMatrix(:,3),'r.')
-
-
-%%
-figure(1); clf;
-subplot(311)
-plot3(stats.centerMean,stats.centerVar,NLI_noSurround,'ko')
-
-subplot(312)
-plot3(stats.centerMean,stats.centerVar,NLI_naturalSurround,'go')
-
-subplot(313)
-plot3(stats.centerMean,stats.centerVar,NLI_mixedSurround,'ro')
 
 %%
 
