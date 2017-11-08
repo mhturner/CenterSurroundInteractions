@@ -194,7 +194,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDModSurroundAnalysis(parentNode,...
-    'metric','integrated');
+    'metric','integrated','figureID','OFFspk');
 
 % ,'figureID','OFFspk'
 % ,'figureID' ,'OFFspk_ct'
@@ -249,7 +249,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doFlashedGratingCorrelatedSurroundAnalysis(parentNode,...
-    'metric','integrated','exportFigs',false);
+    'metric','integrated','exportFigs',true);
 
 %% LINEAR EQUIVALENT DISC MIXED SURROUND: tree
 list = loader.loadEpochList([dataFolder,'LEDMixedSurround.mat'],dataFolder);
@@ -281,7 +281,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDMixedSurroundAnalysis(parentNode,...
-    'metric','integrated','exportFigs',true);
+    'metric','integrated','exportFigs',false);
 
 %% CONTRAST RESPONSE SPOTS: tree
 

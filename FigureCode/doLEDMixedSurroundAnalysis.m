@@ -119,6 +119,28 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     end % for cell in pop
 
     allDiffMatrix = allImageResponseMatrix - allDiscResponseMatrix;
+    
+    % % % % % % NLI VS. BINNED CENTER MEAN % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+    noBins = 6;
+    allDiffMatrix = allImageResponseMatrix - allDiscResponseMatrix;
+    allNliMatrix = allDiffMatrix ./ (allImageResponseMatrix + allDiscResponseMatrix);
+    cutInds = find(allEqContrast > 0); %cut positive means, too few spike responses
+    allEqContrast(cutInds) = [];
+    allNliMatrix(cutInds,:) = [];
+
+    figure; clf; fig11=gca; initFig(fig11,'Relative center mean','NLI') % NLI vs center intensity
+
+    tempNLIs = allNliMatrix(:,1);
+    binAndPlotEquallyPopulatedBins(allEqContrast(~isnan(tempNLIs)),tempNLIs(~isnan(tempNLIs)),noBins,fig11,'k','none')
+
+    tempNLIs = allNliMatrix(:,2);
+    binAndPlotEquallyPopulatedBins(allEqContrast(~isnan(tempNLIs)),tempNLIs(~isnan(tempNLIs)),noBins,fig11,'g','nat')
+
+    tempNLIs = allNliMatrix(:,3);
+    binAndPlotEquallyPopulatedBins(allEqContrast(~isnan(tempNLIs)),tempNLIs(~isnan(tempNLIs)),noBins,fig11,'r','mix')
+    
+    
+    
 % % % % % % MEAN BY IMAGE % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
     
     colors = hsv(cellCt);

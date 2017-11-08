@@ -6,9 +6,6 @@ resources_dir = '~/Dropbox/RiekeLab/Analysis/MATLAB/turner-package/resources/';
 IMAGES_DIR_VH = '~/Dropbox/RiekeLab/Analysis/MATLAB/MHT-analysis/resources/vanhateren_iml/';
 load([resources_dir, 'dovesFEMstims_20160422.mat'])
 
-targetImageIndex = 1;
-noPatches = 50;
-
 micronsPerPixel = 6.6;
 
 %RF components:
@@ -22,22 +19,6 @@ subunitSigma_um = 10;
 subunitSurroundSigma_um = 150;
 centerSigma_um = 40;
 
-% % % % % % % % LOAD NATURAL IMAGE % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-for ss = 1:length(FEMdata)
-    if FEMdata(ss).ImageIndex == targetImageIndex
-        stimInd = ss;
-        break;
-    end
-end
-%image:
-fileName = [FEMdata(stimInd).ImageName(1:8), '_',num2str(FEMdata(stimInd).SubjectIndex),'.mat'];
-f1=fopen([IMAGES_DIR_VH, FEMdata(stimInd).ImageName],'rb','ieee-be');
-w=1536;h=1024;
-my_image=fread(f1,[w,h],'uint16');
-my_image = my_image';
-my_image = my_image ./ max(my_image(:)); %normalize to [0 1]
-
-my_image_nomean = (my_image - mean(my_image(:))) ./ mean(my_image(:));
 
 %convert to pixels:
 filterSize = round(filterSize_um / micronsPerPixel);                % size of patch (um)
@@ -124,8 +105,32 @@ centerSize = round(centerSize_um / micronsPerPixel);
 
 %%
 % % % responses to image patches and discs, +/- surrounds
-
 tic;
+
+figure(6); clf;
+
+for ii = 1:15
+targetImageIndex = ii;
+noPatches = 50;
+
+% % % % % % % % LOAD NATURAL IMAGE % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+for ss = 1:length(FEMdata)
+    if FEMdata(ss).ImageIndex == targetImageIndex
+        stimInd = ss;
+        break;
+    end
+end
+%image:
+fileName = [FEMdata(stimInd).ImageName(1:8), '_',num2str(FEMdata(stimInd).SubjectIndex),'.mat'];
+f1=fopen([IMAGES_DIR_VH, FEMdata(stimInd).ImageName],'rb','ieee-be');
+w=1536;h=1024;
+my_image=fread(f1,[w,h],'uint16');
+my_image = my_image';
+my_image = my_image ./ max(my_image(:)); %normalize to [0 1]
+
+my_image_nomean = (my_image - mean(my_image(:))) ./ mean(my_image(:));
+
+
 contrastPolarity = -1;
 
 rng(1); %set random seed
@@ -288,6 +293,37 @@ for pp = 1:noPatches
         response.DiscMixedSurround(pp,:) = sum(subunitOutputs .* subunitWeightings);
     
 end
+intResponse_image = trapz(response.Image,2);
+intResponse_disc = trapz(response.Disc,2);
+respDiff_none = intResponse_image - intResponse_disc;
+
+intResponse_image = trapz(response.ImageMatchedSurround,2);
+intResponse_disc = trapz(response.DiscMatchedSurround,2);
+respDiff_nat = intResponse_image - intResponse_disc;
+
+intResponse_image = trapz(response.ImageMixedSurround,2);
+intResponse_disc = trapz(response.DiscMixedSurround,2);
+respDiff_mix = intResponse_image - intResponse_disc;
+
+
+figure(6);
+subplot(221); hold on; plot(mean(respDiff_none),mean(respDiff_nat),'go')
+
+subplot(222); hold on; plot(mean(respDiff_none),mean(respDiff_mix),'ro')
+
+subplot(223); hold on; plot(mean(respDiff_nat),mean(respDiff_mix),'ko')
+
+disp(ii)
+end
+figure(6);
+subplot(221); hold on;
+plot([0, 100],[0, 100],'k--')
+
+subplot(222); hold on;
+plot([0, 100],[0, 100],'k--')
+
+subplot(223); hold on;
+plot([0, 100],[0, 100],'k--')
 
 
 %%
