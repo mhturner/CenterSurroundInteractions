@@ -1,8 +1,10 @@
 %% % % % % % % % % RESPONSE TO SPOTS % % % % % % % % % % % % % % % % % % % % % 
 clear all; close all; clc;
 RF = SpatioTemporalRFModel;
-RF.subunitSurroundWeight = 1; %0.7, at 0 shift ~Off parasol
+RF.subunitSurroundWeight = 0.5; %1, at 0 shift ~Off parasol; 1.5 = str; 0.5 = wk
 RF.surroundFilterTimeShift = 0;
+stimulusStep = [zeros(1,150),ones(1,200),zeros(1,150)];
+timeVec = (0:499);
 
 RF.makeRfComponents;
 
@@ -13,31 +15,51 @@ filterSize = size(RF.SubunitFilter,1);
 
 [rr, cc] = meshgrid(1:filterSize,1:filterSize);
 colors = pmkmp(length(stimulus.spotSize));
-figure(2); clf; hold on;
+
+figure; clf; fig1=gca; initFig(fig1,'Time (ms)','Resp. (au)')
 for ss = 1:length(stimulus.spotSize) %get responses to each spot
     currentRadius = (stimulus.spotSize(ss)/2)/ RF.MicronsPerPixel; %convert to pixel
     spotBinary = double(sqrt((rr-(filterSize/2)).^2+(cc-(filterSize/2)).^2)<=currentRadius);
     
-    response.spots(ss,:) = RF.getResponse(spotBinary);
-    plot(response.spots(ss,:),'Color',colors(ss,:));
+    response.spots(ss,:) = RF.getResponse(spotBinary,stimulusStep);
+    addLineToAxis(timeVec,response.spots(ss,:),['resp',num2str(ss)],fig1,colors(ss,:),'-','none')
 end
 
-intResponse = trapz(response.spots(:,1:100),2);
-figure(3); clf; plot(stimulus.spotSize,intResponse,'ko')
+intResponse = trapz(response.spots(:,150:350),2);
+figure; clf; fig2=gca; initFig(fig2,'Spot size (um)','Resp. (au)')
+addLineToAxis(stimulus.spotSize,intResponse,'dat',fig2,'k','none','o')
+
+
+figure; clf; fig3=gca; initFig(fig3,'Time (ms)','Resp. (au)')
+addLineToAxis(timeVec,RF.CenterTemporalFilter,'Cfilt',fig3,'g','-','none')
+addLineToAxis(timeVec,RF.SurroundTemporalFilter,'Sfilt',fig3,'m','-','none')
+
 
 [~, ind] = max(intResponse);
 centerSize_um = stimulus.spotSize(ind);
 centerSize = round(centerSize_um / RF.MicronsPerPixel);
 
+makeAxisStruct(fig1,'TModel_ES' ,'RFSurroundFigs')
+makeAxisStruct(fig2,'TModel_AS_wk' ,'RFSurroundFigs')
+makeAxisStruct(fig3,'TModel_filters' ,'RFSurroundFigs')
+
+figure; clf; fig4=gca; initFig(fig4,'loc','Resp. (au)')
+xx = 1:size(RF.SubunitFilter,1);
+addLineToAxis(xx,mean(RF.SubunitFilter),'Cfilt',fig4,'g','-','none')
+addLineToAxis(xx,-mean(RF.SubunitSurroundFilter),'Sfilt',fig4,'m','-','none')
+addLineToAxis(xx,mean(RF.SubunitFilter) - mean(RF.SubunitSurroundFilter),'Sumfilt',fig4,'k','-','none')
+makeAxisStruct(fig4,'TModel_SubFilters' ,'RFSurroundFigs')
+
 %% % % % % % % % % RESPONSE TO NATURAL IMAGE STIMS % % % % % % % % % % % % % % % % % % % %
-intLength = 100; %msec
-noPatches = 100;
-noImages = 15;
+noPatches = 50;
+noImages = 29;
 
 
 RF = SpatioTemporalRFModel;
-RF.subunitSurroundWeight = 1; %1.3, at 0 shift ~Off parasol
-RF.surroundFilterTimeShift = -10;
+RF.subunitSurroundWeight = 0.5; %1, at 0 shift ~Off parasol; 1.5 = str; 0.5 = wk;
+RF.surroundFilterTimeShift = 0; %negative means move surround left (faster)
+stimulusStep = [zeros(1,150),ones(1,200),zeros(1,150)];
+intInds = 150:350;
 
 RF.makeRfComponents;
 
@@ -107,7 +129,7 @@ for pp = 1:noPatches
     %1) Image:
         ImageStim = newImagePatch;
         ImageStim(~centerBinary) = 0; %add aperture
-        response.Image(pp,:) = RF.getResponse(ImageStim);
+        response.Image(pp,:) = RF.getResponse(ImageStim,stimulusStep);
     %2) Disc:
         %compute linear equivalent contrast...
         % Get the model RF:
@@ -116,39 +138,39 @@ for pp = 1:noPatches
         weightingFxn = weightingFxn ./ sum(weightingFxn(:)); %sum to one
         equivalentContrast = sum(sum(weightingFxn .* newImagePatch));
         DiscStim = equivalentContrast .* centerBinary; %uniform disc
-        response.Disc(pp,:) = RF.getResponse(DiscStim);
+        response.Disc(pp,:) = RF.getResponse(DiscStim,stimulusStep);
     %3) ImageMatchedSurround
         ImageMatchedSurroundStim = newImagePatch;
-        response.ImageMatchedSurround(pp,:) = RF.getResponse(ImageMatchedSurroundStim);
+        response.ImageMatchedSurround(pp,:) = RF.getResponse(ImageMatchedSurroundStim,stimulusStep);
     %4) DiscMatchedSurround
         DiscMatchedSurroundStim = newImagePatch;
         DiscMatchedSurroundStim(logical(centerBinary)) = equivalentContrast; %put equiv. disc in center
-        response.DiscMatchedSurround(pp,:) = RF.getResponse(DiscMatchedSurroundStim);
+        response.DiscMatchedSurround(pp,:) = RF.getResponse(DiscMatchedSurroundStim,stimulusStep);
     %5) ImageMixedSurround
         ImageMixedSurroundStim = mixedImagePatch;
         ImageMixedSurroundStim(logical(centerBinary)) = ImageStim(logical(centerBinary));
-        response.ImageMixedSurround(pp,:) = RF.getResponse(ImageMixedSurroundStim);
+        response.ImageMixedSurround(pp,:) = RF.getResponse(ImageMixedSurroundStim,stimulusStep);
     %6) DiscMixedSurround
         DiscMixedSurroundStim = mixedImagePatch;
         DiscMixedSurroundStim(logical(centerBinary)) = equivalentContrast;
-        response.DiscMixedSurround(pp,:) = RF.getResponse(DiscMixedSurroundStim);
+        response.DiscMixedSurround(pp,:) = RF.getResponse(DiscMixedSurroundStim,stimulusStep);
         
         %eq contrast calc based on contrast polarity flipped. Flip back...
         patchIntensity(pp) = contrastPolarity .* equivalentContrast;
 end
 
-intResponse_image = trapz(response.Image(:,1:intLength),2);
-intResponse_disc = trapz(response.Disc(:,1:intLength),2);
+intResponse_image = trapz(response.Image(:,intInds),2);
+intResponse_disc = trapz(response.Disc(:,intInds),2);
 allNLI.none(ii,:) = (intResponse_image - intResponse_disc) ./ ...
     (intResponse_image + intResponse_disc);
 
-intResponse_image = trapz(response.ImageMatchedSurround(:,1:intLength),2);
-intResponse_disc = trapz(response.DiscMatchedSurround(:,1:intLength),2);
+intResponse_image = trapz(response.ImageMatchedSurround(:,intInds),2);
+intResponse_disc = trapz(response.DiscMatchedSurround(:,intInds),2);
 allNLI.nat(ii,:) = (intResponse_image - intResponse_disc) ./ ...
     (intResponse_image + intResponse_disc);
 
-intResponse_image = trapz(response.ImageMixedSurround(:,1:intLength),2);
-intResponse_disc = trapz(response.DiscMixedSurround(:,1:intLength),2);
+intResponse_image = trapz(response.ImageMixedSurround(:,intInds),2);
+intResponse_disc = trapz(response.DiscMixedSurround(:,intInds),2);
 allNLI.mix(ii,:) = (intResponse_image - intResponse_disc) ./ ...
     (intResponse_image + intResponse_disc);
 
@@ -180,4 +202,5 @@ binAndPlotEquallyPopulatedBins(patchIntensity(~isnan(tempNLIs)),tempNLIs(~isnan(
 tempNLIs = NLImix;
 binAndPlotEquallyPopulatedBins(patchIntensity(~isnan(tempNLIs)),tempNLIs(~isnan(tempNLIs)),noBins,fig11,'r','mix')
 
+makeAxisStruct(fig11,'TModel_NLIbinned_wk' ,'RFSurroundFigs')
 

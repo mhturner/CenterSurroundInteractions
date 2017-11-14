@@ -26,7 +26,7 @@ classdef SpatioTemporalRFModel < handle
 
     methods
         
-        function response = getResponse(obj,stimulusMatrix)
+        function response = getResponse(obj,stimulusMatrix,stimulusWave)
             if isempty(obj.SubunitFilter)
                error('Initialize model with makeRfComponents')
             end
@@ -44,8 +44,14 @@ classdef SpatioTemporalRFModel < handle
 
             %temporal activation of each subunit center & surround
             %rows = subunit, cols = time
-            subunitVoltage = subunitCenterActivations * obj.CenterTemporalFilter -...
-                (obj.subunitSurroundWeight .* subunitSuroundActivations) * obj.SurroundTemporalFilter;
+            centerFilteredStim = conv(stimulusWave,obj.CenterTemporalFilter);
+            centerFilteredStim = centerFilteredStim(1:length(stimulusWave));
+            
+            surroundFilteredStim = conv(stimulusWave,obj.SurroundTemporalFilter);
+            surroundFilteredStim = surroundFilteredStim(1:length(stimulusWave));
+            
+            subunitVoltage = subunitCenterActivations * centerFilteredStim -...
+                (obj.subunitSurroundWeight .* subunitSuroundActivations) * surroundFilteredStim;
 
             %hit each subunit with rectifying synapse
             subunitVoltage(subunitVoltage < 0) = 0;
