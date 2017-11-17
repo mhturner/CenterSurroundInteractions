@@ -7,7 +7,7 @@ dataFolder = '/Users/mhturner/Dropbox/CurrentData/RFSurround/';
 saveFileDirectory = '~/Dropbox/RiekeLab/Analysis/MATLAB/RFSurround/resources/SavedTreeFlags/';
 import auimodel.*
 import vuidocument.*
-cd('~/Dropbox/RiekeLab/Analysis/MATLAB/RFSurround/')
+cd('~/Dropbox/RiekeLab/Analysis/MATLAB/CenterSurroundInteractions/')
 
 %% DOVES CS ADDITIVITY: tree
 list = loader.loadEpochList([dataFolder,'DOVEScsAdditivity.mat'],dataFolder);
@@ -194,7 +194,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDModSurroundAnalysis(parentNode,...
-    'metric','integrated','figureID','OFFspk');
+    'metric','integrated','figureID','ONspk');
 
 % ,'figureID','OFFspk'
 % ,'figureID' ,'OFFspk_ct'
@@ -281,7 +281,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDMixedSurroundAnalysis(parentNode,...
-    'metric','integrated','exportFigs',false);
+    'metric','integrated','exportFigs',true);
 
 %% CONTRAST RESPONSE SPOTS: tree
 

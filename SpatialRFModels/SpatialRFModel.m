@@ -1,4 +1,4 @@
-classdef SpatioTemporalRFModel < handle
+classdef SpatialRFModel < handle
     
     properties
         MicronsPerPixel = 6.6; %microns
@@ -9,9 +9,6 @@ classdef SpatioTemporalRFModel < handle
         subunitSigma_um = 10;
         subunitSurroundSigma_um = 150;
         centerSigma_um = 40;
-        
-        %temporal RF components
-        surroundFilterTimeShift = 0; %msec
     end
     
     properties
@@ -19,14 +16,11 @@ classdef SpatioTemporalRFModel < handle
         SubunitSurroundFilter
         SubunitIndices
         SubunitWeightings
-        
-        CenterTemporalFilter
-        SurroundTemporalFilter
     end
 
     methods
         
-        function response = getResponse(obj,stimulusMatrix,stimulusWave)
+        function response = getResponse(obj,stimulusMatrix)
             if isempty(obj.SubunitFilter)
                error('Initialize model with makeRfComponents')
             end
@@ -41,17 +35,8 @@ classdef SpatioTemporalRFModel < handle
 
             convolved_SubunitSurround = conv2(stimulusMatrix, obj.SubunitSurroundFilter, 'same');
             subunitSuroundActivations = convolved_SubunitSurround(obj.SubunitIndices);
-
-            %temporal activation of each subunit center & surround
-            %rows = subunit, cols = time
-            centerFilteredStim = conv(stimulusWave,obj.CenterTemporalFilter);
-            centerFilteredStim = centerFilteredStim(1:length(stimulusWave));
             
-            surroundFilteredStim = conv(stimulusWave,obj.SurroundTemporalFilter);
-            surroundFilteredStim = surroundFilteredStim(1:length(stimulusWave));
-            
-            subunitVoltage = subunitCenterActivations * centerFilteredStim -...
-                (obj.subunitSurroundWeight .* subunitSuroundActivations) * surroundFilteredStim;
+            subunitVoltage = subunitCenterActivations - (obj.subunitSurroundWeight .* subunitSuroundActivations);
 
             %hit each subunit with rectifying synapse
             subunitVoltage(subunitVoltage < 0) = 0;
@@ -60,7 +45,6 @@ classdef SpatioTemporalRFModel < handle
         end
         
         function makeRfComponents(obj)
-            resources_dir = '~/Dropbox/RiekeLab/Analysis/MATLAB/CenterSurroundInteractions/resources/';
             % % % % % % % % MAKE SPATIAL RF COMPONENTS % % % % % % % % % % % % % % % % 
             %convert to pixels:
             filterSize = obj.Micron2Pixel(obj.filterSize_um);
@@ -90,26 +74,6 @@ classdef SpatioTemporalRFModel < handle
             %get weighting of each subunit output by center
             obj.SubunitWeightings = RFCenter(obj.SubunitIndices);
             obj.SubunitWeightings = obj.SubunitWeightings ./ sum(obj.SubunitWeightings);
-            
-            % % % % % % % % MAKE TEMPORAL RF COMPONENTS % % % % % % % % % % % % % % % 
-            load([resources_dir, 'OffParasolExcitatoryFilters.mat'])
-            obj.CenterTemporalFilter = mean(filters.center);
-            obj.CenterTemporalFilter = decimate(obj.CenterTemporalFilter,10); %resample to msec from 10 Khz
-            obj.CenterTemporalFilter = -obj.CenterTemporalFilter ./ max(abs(obj.CenterTemporalFilter));
-            
-            obj.SurroundTemporalFilter = mean(filters.surround);
-            obj.SurroundTemporalFilter = decimate(obj.SurroundTemporalFilter,10); %resample to msec from 10 Khz
-            obj.SurroundTemporalFilter = obj.SurroundTemporalFilter ./ max(abs(obj.SurroundTemporalFilter));
-            
-            if obj.surroundFilterTimeShift > 0 %shift surround later in time
-                obj.SurroundTemporalFilter = cat(2,zeros(1,obj.surroundFilterTimeShift),obj.SurroundTemporalFilter);
-                obj.SurroundTemporalFilter((length(obj.CenterTemporalFilter) + 1) : end) = [];
-            elseif obj.surroundFilterTimeShift < 0 %shift surround earlier in time
-                obj.SurroundTemporalFilter(1:abs(obj.surroundFilterTimeShift)) = [];
-                obj.SurroundTemporalFilter(end:length(obj.CenterTemporalFilter)) = 0;
-            else
-                %no shift
-            end
         end
 
     end

@@ -199,8 +199,5 @@ binAndPlotEquallyPopulatedBins(patchIntensity(~isnan(tempNLIs)),tempNLIs(~isnan(
 tempNLIs = NLInat;
 binAndPlotEquallyPopulatedBins(patchIntensity(~isnan(tempNLIs)),tempNLIs(~isnan(tempNLIs)),noBins,fig11,'g','nat')
 
-tempNLIs = NLImix;
-binAndPlotEquallyPopulatedBins(patchIntensity(~isnan(tempNLIs)),tempNLIs(~isnan(tempNLIs)),noBins,fig11,'r','mix')
-
 makeAxisStruct(fig11,'TModel_NLIbinned_wk' ,'RFSurroundFigs')
 

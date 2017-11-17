@@ -40,9 +40,16 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     allCellIDs = [];
     allEqContrast = [];
     allSpatialContrast = [];
+    allMixSurroundInt = [];
+    allBackgroundInt = [];
 
     imageCt = 0;
     cellCt = 0;
+    
+    filterSize = 106;
+    [rr, cc] = meshgrid(1:filterSize,1:filterSize);
+    surroundBinary = logical(sqrt((rr-(filterSize/2)).^2+(cc-(filterSize/2)).^2)<=103 & ...
+        sqrt((rr-(filterSize/2)).^2+(cc-(filterSize/2)).^2)>18);
     for pp = 1:length(populationNodes) % for cell in pop
         cellNode = populationNodes{pp};
         cellInfo = getCellInfoFromEpochList(cellNode.epochList);
@@ -53,6 +60,8 @@ function doLEDMixedSurroundAnalysis(node,varargin)
         DiscResponseMatrix = [];
         eqContrast = [];
         spatialContrast = [];
+        backgroundInt = [];
+        mixSurroundInt = [];
         for imageInd = 1:cellNode.children.length % for image ID
             imageCt = imageCt + 1;
             imageNode = cellNode.children(imageInd);
@@ -61,12 +70,16 @@ function doLEDMixedSurroundAnalysis(node,varargin)
                 eqInt = patchNode.epochList.firstValue.protocolSettings('equivalentIntensity');
                 bg = patchNode.epochList.firstValue.protocolSettings('backgroundIntensity');
                 eqContrast(patchInd) = (eqInt - bg) / bg;
+                backgroundInt(patchInd) = bg;
                 
                 patchLoc = convertJavaArrayList(patchNode.epochList.firstValue.protocolSettings('currentCenterLocation'));
                 imageName = patchNode.epochList.firstValue.protocolSettings('imageName');
                 imageRes = getNaturalImagePatchFromLocation(patchLoc,imageName,'imageSize',[300 300]);
                 %spatialContrast = stdev / mean
                 spatialContrast(patchInd) = std(imageRes.images{1}(:)) / mean(imageRes.images{1}(:));
+                mixLoc = convertJavaArrayList(patchNode.epochList.firstValue.protocolSettings('currentMixedSurroundPatchLocation'));
+                mixRes = getNaturalImagePatchFromLocation(mixLoc,imageName,'imageSize',[700 700]);
+                mixSurroundInt(patchInd) = mean(mixRes.images{1}(surroundBinary));
 
                 %get image and disc responses, no surround:
                 noSurroundNode = patchNode.childBySplitValue('none');
@@ -115,21 +128,29 @@ function doLEDMixedSurroundAnalysis(node,varargin)
             %image patch stats:
             allEqContrast = cat(2,allEqContrast,eqContrast);
             allSpatialContrast = cat(2,allSpatialContrast,spatialContrast);
+            allMixSurroundInt = cat(2,allMixSurroundInt,mixSurroundInt);
+            allBackgroundInt = cat(2,allBackgroundInt,backgroundInt);
         end % for image ID
     end % for cell in pop
 
     allDiffMatrix = allImageResponseMatrix - allDiscResponseMatrix;
-    
-    % % % % % % NLI VS. BINNED CENTER MEAN % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
-    noBins = 6;
-    allDiffMatrix = allImageResponseMatrix - allDiscResponseMatrix;
     allNliMatrix = allDiffMatrix ./ (allImageResponseMatrix + allDiscResponseMatrix);
+% % % % % % MIX S: NLI VS Ic - Is % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+    allCenterInt = (allEqContrast .* allBackgroundInt) + allBackgroundInt;
+    relativeCSdiff = (allCenterInt - allMixSurroundInt) ./ allBackgroundInt;
+    tempMixVex = allNliMatrix(:,3);
+
+    noBins = 9;
+    figure; clf; fig12=gca; initFig(fig12,'Ic - Is','NLI')
+    binAndPlotEquallyPopulatedBins(relativeCSdiff(~isnan(tempMixVex)),tempMixVex(~isnan(tempMixVex)),noBins,fig12,[0.5 0.5 0.5],'mix')
+
+% % % % % % NLI VS. BINNED CENTER MEAN % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
+    noBins = 6;
     cutInds = find(allEqContrast > 0); %cut positive means, too few spike responses
     allEqContrast(cutInds) = [];
     allNliMatrix(cutInds,:) = [];
 
     figure; clf; fig11=gca; initFig(fig11,'Relative center mean','NLI') % NLI vs center intensity
-
     tempNLIs = allNliMatrix(:,1);
     binAndPlotEquallyPopulatedBins(allEqContrast(~isnan(tempNLIs)),tempNLIs(~isnan(tempNLIs)),noBins,fig11,'k','none')
 
@@ -138,9 +159,6 @@ function doLEDMixedSurroundAnalysis(node,varargin)
 
     tempNLIs = allNliMatrix(:,3);
     binAndPlotEquallyPopulatedBins(allEqContrast(~isnan(tempNLIs)),tempNLIs(~isnan(tempNLIs)),noBins,fig11,'r','mix')
-    
-    
-    
 % % % % % % MEAN BY IMAGE % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
     
     colors = hsv(cellCt);
@@ -216,7 +234,6 @@ function doLEDMixedSurroundAnalysis(node,varargin)
     disp('No. cells:')
     disp(cellCt);
     drawnow();
-    pause;
 
     if (exportFigs)
         makeAxisStruct(fig2,'MixS_nat' ,'RFSurroundFigs')
@@ -230,6 +247,9 @@ function doLEDMixedSurroundAnalysis(node,varargin)
         makeAxisStruct(fig8,'MixS_egNone' ,'RFSurroundFigs')
         makeAxisStruct(fig9,'MixS_egNat' ,'RFSurroundFigs')
         makeAxisStruct(fig10,'MixS_egMix' ,'RFSurroundFigs')
+        
+        makeAxisStruct(fig11,'MixS_NLIvCtr' ,'RFSurroundFigs')
+        makeAxisStruct(fig12,'MixS_NLIvMixCS' ,'RFSurroundFigs')
     end
     
 end
