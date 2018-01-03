@@ -7,7 +7,7 @@ function doCSLNAnalysis(node,varargin)
     addParameter(ip,'convertToConductance',true,@islogical);
     addParameter(ip,'fitWithEquallyPopulatedBins',true,@islogical);
     
-    figDir = '~/Dropbox/RiekeLab/Analysis/MATLAB/RFSurround/resources/TempFigs/'; %for saved eps figs
+    figDir = '~/Dropbox/RiekeLab/Analysis/MATLAB/CenterSurroundInteractions/resources/TempFigs/'; %for saved eps figs
 
     ip.parse(node,varargin{:});
     node = ip.Results.node;
@@ -100,8 +100,6 @@ function doCSLNAnalysis(node,varargin)
         
         filters.center(pp,:) = center.LinearFilter;
         filters.surround(pp,:) = surround.LinearFilter;
-        
-        continue
 
         if currentNode.custom.get('isExample')
             %Linear filters
@@ -186,80 +184,41 @@ function doCSLNAnalysis(node,varargin)
         end
 
 % % % % % % % % MODEL FITTING % % % % % % % % % % % % % % % % % % % % % % % % % 
-        % Split up data into training and testing. Use repeated seed data
-        % if available for testing
-        if isempty(repeatedNode) %train on some random seed data. Hold one epoch out to test
-            epochLen = length(centerSurround.measuredResponse) / centerSurround.n;
-            temp = [];
-            for testingEpoch = 1:(centerSurround.n)
-                epochToHold = testingEpoch; %epoch number to hold out
-                testDataInds = ((epochToHold-1)*epochLen + 1):(epochToHold*epochLen);
-                fitDataInds = setdiff(1:length(centerSurround.measuredResponse),testDataInds);
+        % Split up data into training and testing
+        epochLen = length(centerSurround.measuredResponse) / centerSurround.n;
+        temp = [];
+        for testingEpoch = 1:(centerSurround.n)
+            epochToHold = testingEpoch; %epoch number to hold out
+            testDataInds = ((epochToHold-1)*epochLen + 1):(epochToHold*epochLen);
+            fitDataInds = setdiff(1:length(centerSurround.measuredResponse),testDataInds);
 
-                trainingData.centerGS = center.generatorSignal(fitDataInds);
-                trainingData.surroundGS = surround.generatorSignal(fitDataInds);
-                trainingData.csMeasured = centerSurround.measuredResponse(fitDataInds);
-                trainingData.cMeasured = center.measuredResponse(fitDataInds);
-                trainingData.sMeasured = surround.measuredResponse(fitDataInds);
+            trainingData.centerGS = center.generatorSignal(fitDataInds);
+            trainingData.surroundGS = surround.generatorSignal(fitDataInds);
+            trainingData.csMeasured = centerSurround.measuredResponse(fitDataInds);
+            trainingData.cMeasured = center.measuredResponse(fitDataInds);
+            trainingData.sMeasured = surround.measuredResponse(fitDataInds);
 
-                testingData.centerGS = center.generatorSignal(testDataInds);
-                testingData.surroundGS = surround.generatorSignal(testDataInds);
-                testingData.csMeasured = centerSurround.measuredResponse(testDataInds);
-                
-                predRes = getPredictions(trainingData,testingData,...
-                    bins2D,fitWithEquallyPopulatedBins,...
-                    center,surround,...
-                    currentNode.custom.get('isExample'));
-                temp(testingEpoch,1) = predRes.joint;
-                temp(testingEpoch,2) = predRes.indep;
-                temp(testingEpoch,3) = predRes.shared;
-                temp(testingEpoch,4) = predRes.threeNL;
-            end
-            
-            %average over all testing epochs:
-            rSquaredValues.joint(pp) = mean(temp(:,1));
-            rSquaredValues.indep(pp) = mean(temp(:,2));
-            rSquaredValues.shared(pp) = mean(temp(:,3));
-            rSquaredValues.threeNL(pp) = mean(temp(:,4));
-        else % train on all random seed data. Test on mean repeated data.
-            trainingData.centerGS = center.generatorSignal;
-            trainingData.surroundGS = surround.generatorSignal;
-            trainingData.csMeasured = centerSurround.measuredResponse;
-            trainingData.cMeasured = center.measuredResponse;
-            trainingData.sMeasured = surround.measuredResponse;
-            
-            % get test data...
-            % center GS:
-            tempCenterStruct = getLinearFilterAndPrediction(repeatedNode.childBySplitValue('Center').epochList,recType,...
-                'seedName','centerNoiseSeed','numberOfBins',bins1D);
-            epochLen = length(tempCenterStruct.measuredResponse) / tempCenterStruct.n;
-            tempStim = tempCenterStruct.stimulus(1:epochLen);
-            linearPrediction_center = conv(tempStim,center.LinearFilter);
-            testingData.centerGS = linearPrediction_center(1:length(tempStim));
-            % surround GS:
-            tempSurroundStruct = getLinearFilterAndPrediction(repeatedNode.childBySplitValue('Surround').epochList,recType,...
-                'seedName','surroundNoiseSeed','numberOfBins',bins1D);
-            epochLen = length(tempSurroundStruct.measuredResponse) / tempSurroundStruct.n;
-            tempStim = tempSurroundStruct.stimulus(1:epochLen);
-            linearPrediction_surround = conv(tempStim,surround.LinearFilter);   
-            testingData.surroundGS = linearPrediction_surround(1:length(tempStim));
-            % measured c+s:
-            tempCSStruct = getLinearFilterAndPrediction(repeatedNode.childBySplitValue('Center-Surround').epochList,recType,...
-                'seedName','centerNoiseSeed','numberOfBins',bins1D);
-            epochLen = length(tempCSStruct.measuredResponse) / tempCSStruct.n;
-            responseMatrix = reshape(tempCSStruct.measuredResponse,epochLen,tempCSStruct.n)';
-            testingData.csMeasured = mean(responseMatrix);
-            testingData.csMeasuredVariance = var(responseMatrix);
-            
+            testingData.centerGS = center.generatorSignal(testDataInds);
+            testingData.surroundGS = surround.generatorSignal(testDataInds);
+            testingData.csMeasured = centerSurround.measuredResponse(testDataInds);
+            testingData.centerStimulus = center.stimulus(testDataInds);
+            testingData.surroundStimulus = surround.stimulus(testDataInds);
+
+            exampleFlag = and(currentNode.custom.get('isExample'),testingEpoch==1);
             predRes = getPredictions(trainingData,testingData,...
                 bins2D,fitWithEquallyPopulatedBins,...
-                center,surround,...
-                currentNode.custom.get('isExample'));
-            rSquaredValues.joint(pp) = predRes.joint;
-            rSquaredValues.indep(pp) = predRes.indep;
-            rSquaredValues.shared(pp) = predRes.shared;
-            rSquaredValues.threeNL(pp) = predRes.threeNL;
+                center,surround,exampleFlag);
+            temp(testingEpoch,1) = predRes.joint;
+            temp(testingEpoch,2) = predRes.indep;
+            temp(testingEpoch,3) = predRes.shared;
+            temp(testingEpoch,4) = predRes.threeNL;
         end
+
+        %average over all testing epochs:
+        rSquaredValues.joint(pp) = mean(temp(:,1));
+        rSquaredValues.indep(pp) = mean(temp(:,2));
+        rSquaredValues.shared(pp) = mean(temp(:,3));
+        rSquaredValues.threeNL(pp) = mean(temp(:,4));
         
 % % % % % % % % MODEL-FREE: SLICES THRU RESPONSE MATRIX % % % % % % % % % % % % % % %
         if currentNode.custom.get('isExample')
@@ -313,7 +272,7 @@ function doCSLNAnalysis(node,varargin)
         end %example plotting of model-free additivity stuff
 
     end
-    save('OffParasolExcitatoryFilters.mat','filters')
+%     save('OffParasolExcitatoryFilters.mat','filters')
     
     %Population data, indep vs. shared:
     %   On...
@@ -403,56 +362,56 @@ function doCSLNAnalysis(node,varargin)
 
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
     if (exportFigs)
-        figID = ['CSLNfilters_',recID];
-        makeAxisStruct(fig1,figID ,'RFSurroundFigs')
-
-        figID = ['CSLNnls_',recID];
-        makeAxisStruct(fig2,figID ,'RFSurroundFigs')
-
-        figID = ['CSLNindNL_',recID];
-        makeAxisStruct(fig3,figID ,'RFSurroundFigs')
-
-        figID = ['CSLNsharedNL_',recID];
-        makeAxisStruct(fig4,figID ,'RFSurroundFigs')
-
-        figID = ['CSLNpopR2_',recID];
-        makeAxisStruct(fig5,figID ,'RFSurroundFigs')
-
-        figID = ['CSLNslice_C_',recID];
-        makeAxisStruct(fig6,figID ,'RFSurroundFigs')
-
-        figID = ['CSLNslice_S_',recID];
-        makeAxisStruct(fig7,figID ,'RFSurroundFigs')
-
-        figID = ['CSLNlinSumTrace_','_',recID];
-        makeAxisStruct(fig8,figID ,'RFSurroundFigs')
-    
-        figID = ['CSLNpopR2_3NL_',recID];
-        makeAxisStruct(fig10,figID ,'RFSurroundFigs')
-
-        figID = ['Cstim_',recID];
-        makeAxisStruct(fig11,figID ,'RFSurroundFigs')
-
-        figID = ['Sstim_',recID];
-        makeAxisStruct(fig12,figID ,'RFSurroundFigs')
-
-        figID = ['Cresp_',recID];
-        makeAxisStruct(fig13,figID ,'RFSurroundFigs')
-
-        figID = ['Sresp_',recID];
-        makeAxisStruct(fig14,figID ,'RFSurroundFigs')
-
-        figID = ['CSresp_',recID];
-        makeAxisStruct(fig15,figID ,'RFSurroundFigs')
-        
-        figID = ['CSLNpopImprove_',recID];
-        makeAxisStruct(fig16,figID ,'RFSurroundFigs')
-        
-        figID = ['CSLN_3NLcs',recID];
-        makeAxisStruct(fig17,figID ,'RFSurroundFigs')
-        
-        figID = ['CSLN_3NLshared',recID];
-        makeAxisStruct(fig18,figID ,'RFSurroundFigs')
+%         figID = ['CSLNfilters_',recID];
+%         makeAxisStruct(fig1,figID ,'RFSurroundFigs')
+% 
+%         figID = ['CSLNnls_',recID];
+%         makeAxisStruct(fig2,figID ,'RFSurroundFigs')
+% 
+%         figID = ['CSLNindNL_',recID];
+%         makeAxisStruct(fig3,figID ,'RFSurroundFigs')
+% 
+%         figID = ['CSLNsharedNL_',recID];
+%         makeAxisStruct(fig4,figID ,'RFSurroundFigs')
+% 
+%         figID = ['CSLNpopR2_',recID];
+%         makeAxisStruct(fig5,figID ,'RFSurroundFigs')
+% 
+%         figID = ['CSLNslice_C_',recID];
+%         makeAxisStruct(fig6,figID ,'RFSurroundFigs')
+% 
+%         figID = ['CSLNslice_S_',recID];
+%         makeAxisStruct(fig7,figID ,'RFSurroundFigs')
+% 
+%         figID = ['CSLNlinSumTrace_','_',recID];
+%         makeAxisStruct(fig8,figID ,'RFSurroundFigs')
+%     
+%         figID = ['CSLNpopR2_3NL_',recID];
+%         makeAxisStruct(fig10,figID ,'RFSurroundFigs')
+% 
+%         figID = ['Cstim_',recID];
+%         makeAxisStruct(fig11,figID ,'RFSurroundFigs')
+% 
+%         figID = ['Sstim_',recID];
+%         makeAxisStruct(fig12,figID ,'RFSurroundFigs')
+% 
+%         figID = ['Cresp_',recID];
+%         makeAxisStruct(fig13,figID ,'RFSurroundFigs')
+% 
+%         figID = ['Sresp_',recID];
+%         makeAxisStruct(fig14,figID ,'RFSurroundFigs')
+% 
+%         figID = ['CSresp_',recID];
+%         makeAxisStruct(fig15,figID ,'RFSurroundFigs')
+%         
+%         figID = ['CSLNpopImprove_',recID];
+%         makeAxisStruct(fig16,figID ,'RFSurroundFigs')
+%         
+%         figID = ['CSLN_3NLcs',recID];
+%         makeAxisStruct(fig17,figID ,'RFSurroundFigs')
+%         
+%         figID = ['CSLN_3NLshared',recID];
+%         makeAxisStruct(fig18,figID ,'RFSurroundFigs')
     end
 end
 
@@ -665,6 +624,28 @@ fitWithEquallyPopulatedBins,center,surround,isExample)
         fitRes_ThreeNL.epsilon);
     ss_resid_ThreeNL = sum((predictedResponse_threeNL-testingData.csMeasured).^2);
     res.threeNL = 1-ss_resid_ThreeNL/ss_total;
-
-
+    
+    
+    if (isExample)
+        centerColor = [127, 191, 123] ./ 255;
+        surroundColor = [175, 141, 195] ./ 255;
+        timeVec = (0:length(testingData.csMeasured)-1) ./ 1e4;
+        figure; clf; fig19=gca; initFig(fig19,'Time (s)','Response (nS)') %Eg model traces and data
+        addLineToAxis(timeVec,testingData.csMeasured,'measured',fig19,[0.5 0.5 0.5],'-','none')
+        addLineToAxis(timeVec,predictedResponse_indep,'indep',fig19,'b','-','none')
+        addLineToAxis(timeVec,predictedResponse_shared,'shared',fig19,'k','-','none')
+        addLineToAxis(timeVec,predictedResponse_threeNL,'threeNL',fig19,'r','-','none')
+        makeAxisStruct(fig19,'CSLN_predTraces' ,'RFSurroundFigs')
+        
+        figure; clf; fig20=gca; initFig(fig20,'Time (s)','Stim') %Eg stim traces
+        addLineToAxis(timeVec,testingData.centerStimulus,'centerStim',fig20,centerColor,'-','none')
+        addLineToAxis(timeVec,testingData.surroundStimulus,'surroundStim',fig20,surroundColor,'-','none')
+        makeAxisStruct(fig20,'CSLN_predStims' ,'RFSurroundFigs')
+        
+        figure; clf; fig21=gca; initFig(fig21,'Time (s)','Stim') %Eg stim traces
+        addLineToAxis(timeVec,testingData.centerGS,'centerGS',fig21,centerColor,'-','none')
+        addLineToAxis(timeVec,testingData.surroundGS,'surroundGS',fig21,surroundColor,'-','none')
+        makeAxisStruct(fig21,'CSLN_predGS' ,'RFSurroundFigs')
+        
+    end
 end
