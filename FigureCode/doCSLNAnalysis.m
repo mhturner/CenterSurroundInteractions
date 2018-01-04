@@ -63,6 +63,10 @@ function doCSLNAnalysis(node,varargin)
     rSquaredValues.threeNL = [];
     ONcellInds = [];
     OFFcellInds = [];
+    
+    rectStats.RI = [];
+    rectStats.surroundStrength = [];
+    
     for pp = 1:length(populationNodes)
         recNode = populationNodes{pp};
         currentNode = [];
@@ -221,6 +225,21 @@ function doCSLNAnalysis(node,varargin)
         rSquaredValues.threeNL(pp) = mean(temp(:,4));
         
 % % % % % % % % MODEL-FREE: SLICES THRU RESPONSE MATRIX % % % % % % % % % % % % % % %
+
+        % rectification index as a function of surround strength
+        binRes = binData(trainingData,bins2D,fitWithEquallyPopulatedBins);
+        surroundGS = binRes.surroundGS;
+        responseMean = binRes.responseMean;
+        
+        centerContrastInd = 1;
+        rPlus = responseMean(:,15-centerContrastInd+1);
+        rMinus = responseMean(:,centerContrastInd);
+        r0 = responseMean(:,8);
+        
+        %RI = 1 - (r0-r-)/(r+-r0)
+        rectStats.RI(pp,:) = 1 - (r0 - rMinus)./(rPlus - r0);
+        rectStats.surroundStrength(pp,:) = surroundGS;
+        
         if currentNode.custom.get('isExample')
             binRes = binData(trainingData,bins2D,fitWithEquallyPopulatedBins);
             centerGS = binRes.centerGS;
@@ -273,6 +292,31 @@ function doCSLNAnalysis(node,varargin)
 
     end
 %     save('OffParasolExcitatoryFilters.mat','filters')
+
+    %Rectification index stats
+    figure; clf; fig22=gca; initFig(fig22,'Surround influence','Rect index')
+    onMeanX = mean(rectStats.surroundStrength(ONcellInds,:));
+    onMeanY = mean(rectStats.RI(ONcellInds,:));
+    onErrX = std(rectStats.surroundStrength(ONcellInds,:)) ./ sqrt(length(ONcellInds));
+    onErrY = std(rectStats.RI(ONcellInds,:)) ./ sqrt(length(ONcellInds));
+
+    addLineToAxis(onMeanX,onMeanY,'onMean',fig22,'b','none','o')
+    for ee = 1:size(rectStats.RI,2)
+        addLineToAxis(onMeanX(ee) + [-onErrX(ee), onErrX(ee)],[onMeanY(ee), onMeanY(ee)],['onErrX',num2str(ee)],fig22,'b','-','none')
+        addLineToAxis([onMeanX(ee), onMeanX(ee)],onMeanY(ee) + [-onErrY(ee), onErrY(ee)],['onErrY',num2str(ee)],fig22,'b','-','none')
+    end
+
+    offMeanX = mean(rectStats.surroundStrength(OFFcellInds,:));
+    offMeanY = mean(rectStats.RI(OFFcellInds,:));
+    offErrX = std(rectStats.surroundStrength(OFFcellInds,:)) ./ sqrt(length(OFFcellInds));
+    offErrY = std(rectStats.RI(OFFcellInds,:)) ./ sqrt(length(OFFcellInds));
+
+    addLineToAxis(offMeanX,offMeanY,'offMean',fig22,'r','none','o')
+    for ee = 1:size(rectStats.RI,2)
+        addLineToAxis(offMeanX(ee) + [-offErrX(ee), offErrX(ee)],[offMeanY(ee), offMeanY(ee)],['offErrX',num2str(ee)],fig22,'r','-','none')
+        addLineToAxis([offMeanX(ee), offMeanX(ee)],offMeanY(ee) + [-offErrY(ee), offErrY(ee)],['offErrY',num2str(ee)],fig22,'r','-','none')
+    end
+
     
     %Population data, indep vs. shared:
     %   On...
@@ -362,56 +406,59 @@ function doCSLNAnalysis(node,varargin)
 
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
     if (exportFigs)
-%         figID = ['CSLNfilters_',recID];
-%         makeAxisStruct(fig1,figID ,'RFSurroundFigs')
-% 
-%         figID = ['CSLNnls_',recID];
-%         makeAxisStruct(fig2,figID ,'RFSurroundFigs')
-% 
-%         figID = ['CSLNindNL_',recID];
-%         makeAxisStruct(fig3,figID ,'RFSurroundFigs')
-% 
-%         figID = ['CSLNsharedNL_',recID];
-%         makeAxisStruct(fig4,figID ,'RFSurroundFigs')
-% 
-%         figID = ['CSLNpopR2_',recID];
-%         makeAxisStruct(fig5,figID ,'RFSurroundFigs')
-% 
-%         figID = ['CSLNslice_C_',recID];
-%         makeAxisStruct(fig6,figID ,'RFSurroundFigs')
-% 
-%         figID = ['CSLNslice_S_',recID];
-%         makeAxisStruct(fig7,figID ,'RFSurroundFigs')
-% 
-%         figID = ['CSLNlinSumTrace_','_',recID];
-%         makeAxisStruct(fig8,figID ,'RFSurroundFigs')
-%     
-%         figID = ['CSLNpopR2_3NL_',recID];
-%         makeAxisStruct(fig10,figID ,'RFSurroundFigs')
-% 
-%         figID = ['Cstim_',recID];
-%         makeAxisStruct(fig11,figID ,'RFSurroundFigs')
-% 
-%         figID = ['Sstim_',recID];
-%         makeAxisStruct(fig12,figID ,'RFSurroundFigs')
-% 
-%         figID = ['Cresp_',recID];
-%         makeAxisStruct(fig13,figID ,'RFSurroundFigs')
-% 
-%         figID = ['Sresp_',recID];
-%         makeAxisStruct(fig14,figID ,'RFSurroundFigs')
-% 
-%         figID = ['CSresp_',recID];
-%         makeAxisStruct(fig15,figID ,'RFSurroundFigs')
-%         
-%         figID = ['CSLNpopImprove_',recID];
-%         makeAxisStruct(fig16,figID ,'RFSurroundFigs')
-%         
-%         figID = ['CSLN_3NLcs',recID];
-%         makeAxisStruct(fig17,figID ,'RFSurroundFigs')
-%         
-%         figID = ['CSLN_3NLshared',recID];
-%         makeAxisStruct(fig18,figID ,'RFSurroundFigs')
+        figID = ['CSLNfilters_',recID];
+        makeAxisStruct(fig1,figID ,'RFSurroundFigs')
+
+        figID = ['CSLNnls_',recID];
+        makeAxisStruct(fig2,figID ,'RFSurroundFigs')
+
+        figID = ['CSLNindNL_',recID];
+        makeAxisStruct(fig3,figID ,'RFSurroundFigs')
+
+        figID = ['CSLNsharedNL_',recID];
+        makeAxisStruct(fig4,figID ,'RFSurroundFigs')
+
+        figID = ['CSLNpopR2_',recID];
+        makeAxisStruct(fig5,figID ,'RFSurroundFigs')
+
+        figID = ['CSLNslice_C_',recID];
+        makeAxisStruct(fig6,figID ,'RFSurroundFigs')
+
+        figID = ['CSLNslice_S_',recID];
+        makeAxisStruct(fig7,figID ,'RFSurroundFigs')
+
+        figID = ['CSLNlinSumTrace_','_',recID];
+        makeAxisStruct(fig8,figID ,'RFSurroundFigs')
+    
+        figID = ['CSLNpopR2_3NL_',recID];
+        makeAxisStruct(fig10,figID ,'RFSurroundFigs')
+
+        figID = ['Cstim_',recID];
+        makeAxisStruct(fig11,figID ,'RFSurroundFigs')
+
+        figID = ['Sstim_',recID];
+        makeAxisStruct(fig12,figID ,'RFSurroundFigs')
+
+        figID = ['Cresp_',recID];
+        makeAxisStruct(fig13,figID ,'RFSurroundFigs')
+
+        figID = ['Sresp_',recID];
+        makeAxisStruct(fig14,figID ,'RFSurroundFigs')
+
+        figID = ['CSresp_',recID];
+        makeAxisStruct(fig15,figID ,'RFSurroundFigs')
+        
+        figID = ['CSLNpopImprove_',recID];
+        makeAxisStruct(fig16,figID ,'RFSurroundFigs')
+        
+        figID = ['CSLN_3NLcs',recID];
+        makeAxisStruct(fig17,figID ,'RFSurroundFigs')
+        
+        figID = ['CSLN_3NLshared',recID];
+        makeAxisStruct(fig18,figID ,'RFSurroundFigs')
+        
+        figID = ['CSLN_rectStats'];
+        makeAxisStruct(fig22,figID ,'RFSurroundFigs')
     end
 end
 

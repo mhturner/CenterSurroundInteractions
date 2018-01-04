@@ -6,95 +6,30 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
         @(x) any(validatestring(x,expectedMetrics)));
     addParameter(ip,'exportFigs',true,@islogical);
     
-%     egTraceSurroundContrast = 0.75;
-    egTraceSurroundContrast = -0.5;
+    %+/- 0.75 for Off parasols
+    egTraceSurroundContrast1 = 0.75;
+    egTraceSurroundContrast2 = -0.75;
     
     ip.parse(node,varargin{:});
     node = ip.Results.node;
     metric = ip.Results.metric;
     exportFigs = ip.Results.exportFigs;
     
-    %eg Grating vs null
-    figure; clf;
-    fig2=gca;
-    set(fig2,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig2,'XLabel'),'String','Grating center')
-    set(get(fig2,'YLabel'),'String','No center')
-    set(gcf, 'WindowStyle', 'docked')
     
-    %eg NLI vs surround contrast, lines for different grating contrasts
-    figure; clf;
-    fig3=gca;
-    set(fig3,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig3,'XLabel'),'String','Surround contrast')
-    set(get(fig3,'YLabel'),'String','NLI')
-    set(gcf, 'WindowStyle', 'docked')
+    figure; clf; fig2=gca; initFig(fig2,'Grating center','No center') %eg Grating vs null
+    figure; clf; fig3=gca; initFig(fig3,'Surround contrast','NLI') %eg NLI vs surround contrast, lines for different grating contrasts
+    figure; clf; fig4=gca; initFig(fig4,'Time (s)','Resp') %eg cell traces, no surround
+    figure; clf; fig5=gca; initFig(fig5,'Time (s)','Resp') %eg cell traces, with surround 1
+    figure; clf; fig13=gca; initFig(fig13,'Time (s)','Resp') %eg cell traces, with surround 2
+    figure; clf; fig6=gca; initFig(fig6,'Surround contrast','Mean NLI') %Pop. NLI vs surround contrast
     
-    %eg cell traces, no surround
-    figure; clf;
-    fig4=gca;
-    set(fig4,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig4,'XLabel'),'String','Time (s)')
-    set(get(fig4,'YLabel'),'String','Resp')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    %eg cell traces, with surround
-    figure; clf;
-    fig5=gca;
-    set(fig5,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig5,'XLabel'),'String','Time (s)')
-    set(get(fig5,'YLabel'),'String','Resp')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    %Pop. NLI vs surround contrast
-    figure; clf;
-    fig6=gca;
-    set(fig6,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig6,'XLabel'),'String','Surround contrast')
-    set(get(fig6,'YLabel'),'String','Mean NLI')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    %Raster - s = 0, grating
-    figure; clf;
-    fig7=gca;
-    set(fig7,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig7,'XLabel'),'String','Time (s)')
-    set(get(fig7,'YLabel'),'String','Trial')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    %Raster - s = 0, no grating
-    figure; clf;
-    fig8=gca;
-    set(fig8,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig8,'XLabel'),'String','Time (s)')
-    set(get(fig8,'YLabel'),'String','Trial')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    %Raster - s = eg surround, grating
-    figure; clf;
-    fig9=gca;
-    set(fig9,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig9,'XLabel'),'String','Time (s)')
-    set(get(fig9,'YLabel'),'String','Trial')
-    set(gcf, 'WindowStyle', 'docked')
-    
-    %Raster - s = eg surround, no grating
-    figure; clf;
-    fig10=gca;
-    set(fig10,'XScale','linear','YScale','linear')
-    set(0, 'DefaultAxesFontSize', 12)
-    set(get(fig10,'XLabel'),'String','Time (s)')
-    set(get(fig10,'YLabel'),'String','Trial')
-    set(gcf, 'WindowStyle', 'docked')
-    
+    figure; clf; fig7=gca; initFig(fig7,'Time (s)','Trial') %Raster - s = 0, grating
+    figure; clf; fig8=gca; initFig(fig8,'Time (s)','Trial') %Raster - s = 0, no grating
+    figure; clf; fig9=gca; initFig(fig9,'Time (s)','Trial') %Raster - s = eg surround 1, grating
+    figure; clf; fig10=gca; initFig(fig10,'Time (s)','Trial') %Raster - s = eg surround 1, no grating
+    figure; clf; fig11=gca; initFig(fig11,'Time (s)','Trial') %Raster - s = eg surround 2, no grating
+    figure; clf; fig12=gca; initFig(fig12,'Time (s)','Trial') %Raster - s = eg surround 2, no grating
+
     populationNodes = {};
     ct = 0;
     for nn = 1:node.descendentsDepthFirst.length
@@ -150,16 +85,27 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
                     addLineToAxis(0,0,cellInfo.cellID,fig8,'k','none','none')
                     addLineToAxis(0,0,cellInfo.cellID,fig9,'k','none','none')
                     addLineToAxis(0,0,cellInfo.cellID,fig10,'k','none','none')
-                    if (surroundContrastValues(ss) == egTraceSurroundContrast)
-                        %add example traces, with target surround
+                    if (surroundContrastValues(ss) == egTraceSurroundContrast1)
+                        %add example traces, with target surround # 1
                         imageTrace = getMeanResponseTrace(surroundNode.childBySplitValue('image').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
                         discTrace = getMeanResponseTrace(surroundNode.childBySplitValue('intensity').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
                         addLineToAxis(imageTrace.timeVector, imageTrace.mean,'egImage',fig5,'k','-','none')
                         addLineToAxis(discTrace.timeVector, discTrace.mean,'egDisc',fig5,[0.7 0.7 0.7],'-','none')
                         
-                        if strcmp(recType,'extracellular') %raster plot - eg surround
+                        if strcmp(recType,'extracellular') %raster plot - eg surround 1
                             addRastersToFigure(imageTrace.binary,fig9)
                             addRastersToFigure(discTrace.binary,fig10)
+                        end
+                    elseif (surroundContrastValues(ss) == egTraceSurroundContrast2)
+                        %add example traces, with target surround # 2
+                        imageTrace = getMeanResponseTrace(surroundNode.childBySplitValue('image').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
+                        discTrace = getMeanResponseTrace(surroundNode.childBySplitValue('intensity').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
+                        addLineToAxis(imageTrace.timeVector, imageTrace.mean,'egImage',fig13,'k','-','none')
+                        addLineToAxis(discTrace.timeVector, discTrace.mean,'egDisc',fig13,[0.7 0.7 0.7],'-','none')
+                        
+                        if strcmp(recType,'extracellular') %raster plot - eg surround 2
+                            addRastersToFigure(imageTrace.binary,fig11)
+                            addRastersToFigure(discTrace.binary,fig12)
                         end
 
                     elseif (surroundContrastValues(ss) == 0)
@@ -254,20 +200,23 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
     end
     
     if (exportFigs)
-        figID = ['FGmod_',recType,cellTypeTag];
-        makeAxisStruct(fig2,figID ,'RFSurroundFigs')
-        
-        figID = ['FGmod_NLI_',recType,cellTypeTag];
-        makeAxisStruct(fig3,figID ,'RFSurroundFigs')
-        
+%         figID = ['FGmod_',recType,cellTypeTag];
+%         makeAxisStruct(fig2,figID ,'RFSurroundFigs')
+%         
+%         figID = ['FGmod_NLI_',recType,cellTypeTag];
+%         makeAxisStruct(fig3,figID ,'RFSurroundFigs')
+%         
         figID = ['FGmod_TraceNoS_',recType,cellTypeTag];
         makeAxisStruct(fig4,figID ,'RFSurroundFigs')
         
         figID = ['FGmod_TraceWithS_',recType,cellTypeTag];
         makeAxisStruct(fig5,figID ,'RFSurroundFigs')
 
-        figID = ['FGmod_pop_NLI_',recType,cellTypeTag];
-        makeAxisStruct(fig6,figID ,'RFSurroundFigs')
+%         figID = ['FGmod_pop_NLI_',recType,cellTypeTag];
+%         makeAxisStruct(fig6,figID ,'RFSurroundFigs')
+        
+        figID = ['FGmod_TraceWithS2_',recType,cellTypeTag];
+        makeAxisStruct(fig13,figID ,'RFSurroundFigs')
         
         if strcmp(recType,'extracellular') %raster plots
             figID = ['FGmod_rast_imAlone',cellTypeTag];
@@ -281,6 +230,12 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
             
             figID = ['FGmod_rast_discSurr',cellTypeTag];
             makeAxisStruct(fig10,figID ,'RFSurroundFigs')
+            
+            figID = ['FGmod_rast_imSurr2',cellTypeTag];
+            makeAxisStruct(fig11,figID ,'RFSurroundFigs')
+            
+            figID = ['FGmod_rast_discSurr2',cellTypeTag];
+            makeAxisStruct(fig12,figID ,'RFSurroundFigs')
         
         end
     end
