@@ -12,6 +12,7 @@ function doLEDModSurroundAnalysis(node,varargin)
     figureID = ip.Results.figureID;
     
     egTraceSurroundContrast = 0.75;
+    egTraceSurroundContrast2 = -0.75;
     
     figure; clf; fig2=gca; initFig(fig2,'Image center','Disc center') %Image vs Disc - e.g.
     
@@ -24,6 +25,8 @@ function doLEDModSurroundAnalysis(node,varargin)
     figure; clf; fig8=gca; initFig(fig8,'Time (s)','Trial') %Raster - s = 0, disc
     figure; clf; fig9=gca; initFig(fig9,'Time (s)','Trial') %Raster - s = eg surround, image
     figure; clf; fig10=gca; initFig(fig10,'Time (s)','Trial') %Raster - s = eg surround, disc
+    figure; clf; fig11=gca; initFig(fig11,'Time (s)','Trial') %Raster - s = eg surround2, image
+    figure; clf; fig12=gca; initFig(fig12,'Time (s)','Trial') %Raster - s = eg surround2, disc
 
     populationNodes = {};
     ct = 0;
@@ -119,7 +122,17 @@ function doLEDModSurroundAnalysis(node,varargin)
                                 addRastersToFigure(imageTrace.binary,fig9)
                                 addRastersToFigure(discTrace.binary,fig10)
                             end
+                            
+                        elseif (currentSurroundContrast == egTraceSurroundContrast2)
+                            %add example traces, with target surround 2
+                            imageTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('image').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
+                            discTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('intensity').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
 
+                            if strcmp(recType,'extracellular') %raster plot - eg surround
+                                addRastersToFigure(imageTrace.binary,fig11)
+                                addRastersToFigure(discTrace.binary,fig12)
+                            end
+ 
                         elseif (currentSurroundContrast == 0)
                             %add example traces, no surround
                             imageTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('image').epochList,recType,'attachSpikeBinary',true,'PSTHsigma',10);
@@ -249,6 +262,12 @@ function doLEDModSurroundAnalysis(node,varargin)
             
             figID = 'LEDmodS_rast_discSurr';
             makeAxisStruct(fig10,figID ,'RFSurroundFigs')
+            
+            figID = 'LEDmodS_rast_imSurr2';
+            makeAxisStruct(fig11,figID ,'RFSurroundFigs')
+            
+            figID = 'LEDmodS_rast_discSurr2';
+            makeAxisStruct(fig12,figID ,'RFSurroundFigs')
         end
     end
 end

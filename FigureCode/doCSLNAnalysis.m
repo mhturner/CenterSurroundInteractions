@@ -674,16 +674,18 @@ fitWithEquallyPopulatedBins,center,surround,isExample)
     
     
     if (isExample)
+        
         centerColor = [127, 191, 123] ./ 255;
         surroundColor = [175, 141, 195] ./ 255;
         timeVec = (0:length(testingData.csMeasured)-1) ./ 1e4;
         figure; clf; fig19=gca; initFig(fig19,'Time (s)','Response (nS)') %Eg model traces and data
-        addLineToAxis(timeVec,testingData.csMeasured,'measured',fig19,[0.5 0.5 0.5],'-','none')
+        %10 msec (100 datapoints) smoothing of single trial data. Beyond frequency content of
+        %stimulus (30 Hz)
+        addLineToAxis(timeVec,smooth(testingData.csMeasured,101),'measured',fig19,[0.5 0.5 0.5],'-','none')
         addLineToAxis(timeVec,predictedResponse_indep,'indep',fig19,'b','-','none')
         addLineToAxis(timeVec,predictedResponse_shared,'shared',fig19,'k','-','none')
         addLineToAxis(timeVec,predictedResponse_threeNL,'threeNL',fig19,'r','-','none')
         makeAxisStruct(fig19,'CSLN_predTraces' ,'RFSurroundFigs')
-        
         figure; clf; fig20=gca; initFig(fig20,'Time (s)','Stim') %Eg stim traces
         addLineToAxis(timeVec,testingData.centerStimulus,'centerStim',fig20,centerColor,'-','none')
         addLineToAxis(timeVec,testingData.surroundStimulus,'surroundStim',fig20,surroundColor,'-','none')

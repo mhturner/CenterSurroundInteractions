@@ -189,12 +189,12 @@ gui = epochTreeGUI(tree);
 %% LINEAR EQUIVALENT DISC MOD SURROUND: analysis
 % flag recType nodes, set patch location as examples
 % select cell type as parentNode
-% Eg off spike: 20170110Ec2
+% Eg off spike: 20170110Ec2. Image00657; patch(452,526)
 
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDModSurroundAnalysis(parentNode,...
-    'metric','integrated','figureID','ONspk');
+    'metric','integrated');
 
 % ,'figureID','OFFspk'
 % ,'figureID' ,'OFFspk_ct'
