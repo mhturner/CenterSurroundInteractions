@@ -7,8 +7,10 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
     addParameter(ip,'exportFigs',true,@islogical);
     
     %+/- 0.75 for Off parasols
-    egTraceSurroundContrast1 = 0.75;
-    egTraceSurroundContrast2 = -0.75;
+%     egTraceSurroundContrast1 = 0.75;
+%     egTraceSurroundContrast2 = -0.75;
+    egTraceSurroundContrast1 = -0.5;
+    egTraceSurroundContrast2 = 0.5;
     
     ip.parse(node,varargin{:});
     node = ip.Results.node;
@@ -200,20 +202,20 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
     end
     
     if (exportFigs)
-%         figID = ['FGmod_',recType,cellTypeTag];
-%         makeAxisStruct(fig2,figID ,'RFSurroundFigs')
-%         
-%         figID = ['FGmod_NLI_',recType,cellTypeTag];
-%         makeAxisStruct(fig3,figID ,'RFSurroundFigs')
-%         
+        figID = ['FGmod_',recType,cellTypeTag];
+        makeAxisStruct(fig2,figID ,'RFSurroundFigs')
+        
+        figID = ['FGmod_NLI_',recType,cellTypeTag];
+        makeAxisStruct(fig3,figID ,'RFSurroundFigs')
+        
         figID = ['FGmod_TraceNoS_',recType,cellTypeTag];
         makeAxisStruct(fig4,figID ,'RFSurroundFigs')
         
         figID = ['FGmod_TraceWithS_',recType,cellTypeTag];
         makeAxisStruct(fig5,figID ,'RFSurroundFigs')
 
-%         figID = ['FGmod_pop_NLI_',recType,cellTypeTag];
-%         makeAxisStruct(fig6,figID ,'RFSurroundFigs')
+        figID = ['FGmod_pop_NLI_',recType,cellTypeTag];
+        makeAxisStruct(fig6,figID ,'RFSurroundFigs')
         
         figID = ['FGmod_TraceWithS2_',recType,cellTypeTag];
         makeAxisStruct(fig13,figID ,'RFSurroundFigs')
