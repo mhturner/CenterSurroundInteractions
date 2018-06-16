@@ -73,7 +73,7 @@ doCSLNAnalysis(parentNode,...
     'bins2D',15^2,... 
     'bins1D',20,...
     'exportFigs',false,...
-    'convertToConductance',true,...
+    'convertToConductance',false,...
     'fitWithEquallyPopulatedBins',true);
 
 %% CS NATURAL IMAGE LUMINANCE: tree
@@ -217,13 +217,13 @@ gui = epochTreeGUI(tree);
 
 %% FLASHED GRATING MOD SURROUND: analysis & figs
 % flag recType nodes, set grating contrast as examples
-% select cell type as parentNode
+% select cell type as parentNode4
 % OFF eg = 20170214Ec5, 0.9 contrast
 % ON eg = 20170627Fc5
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doFlashedGratingModSurroundAnalysis(parentNode,...
-    'metric','integrated','exportFigs',true);
+    'metric','integrated','exportFigs',false);
 
 %% FLASHED GRATING CORRELATED SURROUND: tree
 list = loader.loadEpochList([dataFolder,'FlashedGratingCorrelatedSurround.mat'],dataFolder);

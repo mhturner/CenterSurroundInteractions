@@ -42,6 +42,7 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
         end
     end
     popDiffMatrix = [];
+    FlashedGratingModulatedSurround = [];
     for pp = 1:length(populationNodes)
         cellNode = populationNodes{pp};
         thisCellIsExample = 0;
@@ -50,7 +51,7 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
         
         noGratingContrasts = cellNode.children.length;
         noSurrounds = cellNode.children(1).children.length;
-        
+
         clear gratingResponseMatrix
         gratingResponseMatrix.image.mean = nan(noGratingContrasts,noSurrounds);
         gratingResponseMatrix.image.err = nan(noGratingContrasts,noSurrounds);
@@ -59,6 +60,8 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
         DiffMatrix = nan(noGratingContrasts,noSurrounds);
         surroundContrastValues = nan(1,noSurrounds);
         gratingContrastValues = nan(noGratingContrasts,1);
+        
+        FlashedGratingModulatedSurround{pp} = cell(noGratingContrasts,noSurrounds);
         for ii = 1:noGratingContrasts %for each gratingContrast
             gratingNode = cellNode.children(ii);
             gratingContrastValues(ii) = gratingNode.splitValue;
@@ -76,7 +79,33 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
                 gratingResponseMatrix.disc.err(ii,ss) = discResp.(metric).SEM;
 
                 newDiff = (imageResp.(metric).mean - discResp.(metric).mean);
-               
+                
+                % Pull out data to save:
+                amp = surroundNode.epochList.firstValue.protocolSettings('amp');
+                sampleRate = surroundNode.epochList.firstValue.protocolSettings('sampleRate'); %Hz
+                baselineTime = surroundNode.epochList.firstValue.protocolSettings('preTime'); %msec
+                baselinePoints = (baselineTime / 1e3) * sampleRate; %msec -> datapoints
+                %grating data matrix:
+                gratingResponse = riekesuite.getResponseMatrix(surroundNode.childBySplitValue('image').epochList,amp);
+                baselines = mean(gratingResponse(:,1:baselinePoints),2); %baseline for each trial
+                FlashedGratingModulatedSurround{pp}{ii,ss}.gratingResponse = gratingResponse - repmat(baselines,1,size(gratingResponse,2));
+                if strcmp(recType,'extracellular')
+                    %get spike binary matrices, too
+                    tempTrace = getMeanResponseTrace(surroundNode.childBySplitValue('image').epochList,recType,'attachSpikeBinary',true);
+                    FlashedGratingModulatedSurround{pp}{ii,ss}.gratingResponse_binary = tempTrace.binary;
+                end
+                
+                %no grating data matrix:
+                noGratingResponse = riekesuite.getResponseMatrix(surroundNode.childBySplitValue('intensity').epochList,amp);
+                baselines = mean(noGratingResponse(:,1:baselinePoints),2); %baseline for each trial
+                FlashedGratingModulatedSurround{pp}{ii,ss}.noGratingResponse = noGratingResponse - repmat(baselines,1,size(noGratingResponse,2));
+                if strcmp(recType,'extracellular')
+                    %get spike binary matrices, too
+                    tempTrace = getMeanResponseTrace(surroundNode.childBySplitValue('intensity').epochList,recType,'attachSpikeBinary',true);
+                    FlashedGratingModulatedSurround{pp}{ii,ss}.noGratingResponse_binary = tempTrace.binary;
+                end
+                
+                
                 DiffMatrix(ii,ss) = newDiff;
                 if gratingNode.custom.get('isExample')
                     addLineToAxis(0,0,cellInfo.cellID,fig2,'k','none','none')
@@ -177,9 +206,11 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
                 end
             end
         end
-        
+        GratingContrast{pp} = gratingContrastValues;
+        SurroundContrast{pp} = surroundContrastValues;
         popDiffMatrix = cat(3,popDiffMatrix, DiffMatrix);
     end %for cell
+    save(['FlashedGratingModulatedSurround_', cellInfo.cellType,'_', recType,'.mat'],'FlashedGratingModulatedSurround','GratingContrast','SurroundContrast')
     %population NLI stats:
     meanPop = nanmean(popDiffMatrix,3);
     stdPop = nanstd(popDiffMatrix,[],3);

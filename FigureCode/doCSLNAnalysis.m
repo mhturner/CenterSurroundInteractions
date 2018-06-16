@@ -67,6 +67,9 @@ function doCSLNAnalysis(node,varargin)
     rectStats.RI = [];
     rectStats.surroundStrength = [];
     
+    CenterSurroundWhiteNoise = cell(1,length(populationNodes));
+    cellType = cell(1,length(populationNodes));
+    
     for pp = 1:length(populationNodes)
         recNode = populationNodes{pp};
         currentNode = [];
@@ -104,6 +107,18 @@ function doCSLNAnalysis(node,varargin)
         
         filters.center(pp,:) = center.LinearFilter;
         filters.surround(pp,:) = surround.LinearFilter;
+        
+        % pull out stim, resp to share
+        newStimulusResponseStruct = struct;
+        newStimulusResponseStruct.stimulus.center = center.stimulus;
+        newStimulusResponseStruct.stimulus.surround = surround.stimulus;
+        
+        newStimulusResponseStruct.response.center = center.measuredResponse;
+        newStimulusResponseStruct.response.surround = surround.measuredResponse;
+        newStimulusResponseStruct.response.centerSurround = centerSurround.measuredResponse;
+        
+        CenterSurroundWhiteNoise{pp} = newStimulusResponseStruct;
+        cellType{pp} = cellInfo.cellType;
 
         if currentNode.custom.get('isExample')
             %Linear filters
@@ -291,6 +306,7 @@ function doCSLNAnalysis(node,varargin)
         end %example plotting of model-free additivity stuff
 
     end
+    save('CenterSurroundWhiteNoise.mat','CenterSurroundWhiteNoise','cellType')
 %     save('OffParasolExcitatoryFilters.mat','filters')
 
     %Rectification index stats
