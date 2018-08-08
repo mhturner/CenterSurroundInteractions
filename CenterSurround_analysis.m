@@ -76,6 +76,11 @@ doCSLNAnalysis(parentNode,...
     'convertToConductance',false,...
     'fitWithEquallyPopulatedBins',true);
 
+%% CENTER SURROUND NOISE: repeated-seed variance analysis
+clc; CloseAllFiguresExceptGUI();
+parentNode = gui.getSelectedEpochTreeNodes{1};
+doRepeatedSeedVarianceAnalysis(parentNode);
+
 %% CS NATURAL IMAGE LUMINANCE: tree
 list = loader.loadEpochList([dataFolder,'CSNaturalImageLuminance.mat'],dataFolder);
 
@@ -194,7 +199,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDModSurroundAnalysis(parentNode,...
-    'metric','integrated');
+    'metric','integrated','figureID' ,'OFFspk_ct');
 
 % ,'figureID','OFFspk'
 % ,'figureID' ,'OFFspk_ct'
@@ -217,13 +222,13 @@ gui = epochTreeGUI(tree);
 
 %% FLASHED GRATING MOD SURROUND: analysis & figs
 % flag recType nodes, set grating contrast as examples
-% select cell type as parentNode4
+% select cell type as parentNode
 % OFF eg = 20170214Ec5, 0.9 contrast
 % ON eg = 20170627Fc5
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doFlashedGratingModSurroundAnalysis(parentNode,...
-    'metric','integrated','exportFigs',false);
+    'metric','integrated','exportFigs',true);
 
 %% FLASHED GRATING CORRELATED SURROUND: tree
 list = loader.loadEpochList([dataFolder,'FlashedGratingCorrelatedSurround.mat'],dataFolder);

@@ -6,6 +6,18 @@ function doLEDModSurroundAnalysis(node,varargin)
     addParameter(ip,'metric','integrated',...
         @(x) any(validatestring(x,expectedMetrics)));
     
+    figDir = '~/Dropbox/RiekeLab/Analysis/MATLAB/CenterSurroundInteractions/resources/TempFigs/'; %for saved eps figs
+    colors = [ ...
+                215,48,39
+                244,109,67
+               253,174,97
+               254,224,144
+               255,255,191
+               224,243,248
+               171,217,233
+               116,173,209
+               69,117,180 ] / 255;
+
     ip.parse(node,varargin{:});
     node = ip.Results.node;
     metric = ip.Results.metric;
@@ -168,8 +180,19 @@ function doLEDModSurroundAnalysis(node,varargin)
                     patchLocation = str2num(patchNode.splitValue);
                     imageRes = getNaturalImagePatchFromLocation(patchLocation,imageNode.splitValue,'imageSize',[250 250]);
                     figure(30); imagesc(imageRes.images{1}); colormap(gray); axis image; axis off;
-                    presentedContrasts = surroundContrastValues(ll,:);
-                    colors = pmkmp(length(presentedContrasts));
+                    presentedContrasts = surroundContrastValues(ll,:); 
+                    
+                    % colorbar image
+                    temp = nan(1,9,3);
+                    for cc = 1:9
+                        temp(:,cc,:) = colors(cc,:);
+                    end
+                    
+                    fh = figure(45); clf;
+                    imshow(imresize(temp, 200, 'nearest'))
+                    drawnow;
+                    figID = 'LEDmodS_colorbar';
+                    print(fh,[figDir,figID],'-depsc')
 
                     for cc = 1:length(imageResponseMatrix.image.mean(ll,:))
                         plotMarker = 'o';

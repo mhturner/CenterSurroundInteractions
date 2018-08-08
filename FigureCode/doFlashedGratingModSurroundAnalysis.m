@@ -17,6 +17,17 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
     metric = ip.Results.metric;
     exportFigs = ip.Results.exportFigs;
     
+    figColors = [ ...
+                215,48,39
+                244,109,67
+               253,174,97
+               254,224,144
+               255,255,191
+               224,243,248
+               171,217,233
+               116,173,209
+               69,117,180 ] / 255;
+    
     
     figure; clf; fig2=gca; initFig(fig2,'Grating center','No center') %eg Grating vs null
     figure; clf; fig3=gca; initFig(fig3,'Surround contrast','NLI') %eg NLI vs surround contrast, lines for different grating contrasts
@@ -158,7 +169,6 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
             if gratingNode.custom.get('isExample') %add to example figs
                 thisCellIsExample = 1;
                 % resp scatter plot:
-                colors = pmkmp(length(surroundContrastValues));
                 for ss = 1:length(surroundContrastValues)
                     currentSurround = surroundContrastValues(ss);
                     if currentSurround == 0
@@ -170,15 +180,15 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
                     
                     addLineToAxis(gratingResponseMatrix.image.mean(ii,ss),...
                         gratingResponseMatrix.disc.mean(ii,ss),...
-                        ['mean',num2str(ss)],fig2,colors(ss,:),'none',plotMarker)
+                        ['mean',num2str(ss)],fig2,figColors(ss,:),'none',plotMarker)
                     tempX = gratingResponseMatrix.image.mean(ii,ss) + ...
                         [-gratingResponseMatrix.image.err(ii,ss), gratingResponseMatrix.image.err(ii,ss)];
                     tempY = [gratingResponseMatrix.disc.mean(ii,ss), gratingResponseMatrix.disc.mean(ii,ss)];
-                    addLineToAxis(tempX, tempY,['errX',num2str(ss)],fig2,colors(ss,:),'-','none')
+                    addLineToAxis(tempX, tempY,['errX',num2str(ss)],fig2,figColors(ss,:),'-','none')
                     tempX = [gratingResponseMatrix.image.mean(ii,ss), gratingResponseMatrix.image.mean(ii,ss)];
                     tempY = gratingResponseMatrix.disc.mean(ii,ss) + ...
                         [-gratingResponseMatrix.disc.err(ii,ss), gratingResponseMatrix.disc.err(ii,ss)];
-                    addLineToAxis(tempX, tempY,['errY',num2str(ss)],fig2,colors(ss,:),'-','none')
+                    addLineToAxis(tempX, tempY,['errY',num2str(ss)],fig2,figColors(ss,:),'-','none')
                 end
                 limUp = max([gratingResponseMatrix.image.mean(ii,:)', gratingResponseMatrix.disc.mean(ii,:)']);
                 limDown = min([gratingResponseMatrix.image.mean(ii,:)', gratingResponseMatrix.disc.mean(ii,:)']);
