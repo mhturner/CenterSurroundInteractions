@@ -86,7 +86,7 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
         %Stimulus stuff. To get fixation periods...
         stimSet = currentNode.epochList.firstValue.protocolSettings('currentStimSet');
         imageSet = 'NaturalImages';
-        resourcesDir = '~/Documents/MATLAB/turner-package/resources/';
+        resourcesDir = '~/Dropbox/RiekeLab/Analysis/MATLAB/turner-package/resources/';
         load([resourcesDir, stimSet]);
         eyeX = FEMdata(currentNode.splitValue).eyeX;
         eyeY = FEMdata(currentNode.splitValue).eyeY;
@@ -260,12 +260,15 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
     addLineToAxis(meanON_x + [errON_x, -errON_x],[meanON_y meanON_y],'OnErrX',fig7,'b','-','none')
     addLineToAxis([meanON_x, meanON_x],meanON_y + [errON_y, -errON_y],'OnErrY',fig7,'b','-','none')
     
-    %stat test. ON and OFF combined (probaby split later)
-    [~,p] = ttest(meanVals.spikes.measured(OFFcellInds), meanVals.spikes.linsum(OFFcellInds));
+    %stat test
+%     [~,p] = ttest(meanVals.spikes.measured(OFFcellInds), meanVals.spikes.linsum(OFFcellInds));
+    [p,~] = signrank(meanVals.spikes.measured(OFFcellInds), meanVals.spikes.linsum(OFFcellInds));
     disp('Meas. vs LinSum, spikes, OFF:')
     disp(['p = ',num2str(p)])
     
-    [~,p] = ttest(meanVals.spikes.measured(ONcellInds), meanVals.spikes.linsum(ONcellInds));
+%     [~,p] = ttest(meanVals.spikes.measured(ONcellInds), meanVals.spikes.linsum(ONcellInds));
+    [p,~] = signrank(meanVals.spikes.measured(ONcellInds), meanVals.spikes.linsum(ONcellInds));
+    
     disp('Meas. vs LinSum, spikes, ON:')
     disp(['p = ',num2str(p)])
 
@@ -294,11 +297,13 @@ function doDOVEScsAdditivityAnalysis(node,varargin)
     addLineToAxis([meanON_x, meanON_x],meanON_y + [errON_y, -errON_y],'OnErrY',fig8,'b','-','none')
     
     %stats:
-    [~,p] = ttest(meanVals.exc.measured(OFFcellInds), meanVals.exc.linsum(OFFcellInds));
+%     [~,p] = ttest(meanVals.exc.measured(OFFcellInds), meanVals.exc.linsum(OFFcellInds));
+    [p,~] = signrank(meanVals.exc.measured(OFFcellInds), meanVals.exc.linsum(OFFcellInds));
     disp('Meas. vs LinSum, exc, OFF:')
     disp(['p = ',num2str(p)])
     
-    [~,p] = ttest(meanVals.exc.measured(ONcellInds), meanVals.exc.linsum(ONcellInds));
+%     [~,p] = ttest(meanVals.exc.measured(ONcellInds), meanVals.exc.linsum(ONcellInds));
+    [p,~] = signrank(meanVals.exc.measured(ONcellInds), meanVals.exc.linsum(ONcellInds));
     disp('Meas. vs LinSum, exc, ON:')
     disp(['p = ',num2str(p)])
     

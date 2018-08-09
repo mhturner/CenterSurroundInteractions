@@ -28,7 +28,6 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     
     figure; clf; fig12=gca; initFig(fig12,'Intensity','Probability') %eg. Nat image intensity histogram
     
-    figure; clf; fig13=gca; initFig(fig13,'Sparsity natural CS','Sparsity shuffled CS') %sparsity CS corr vs shuffled
     
     figure(30); clf; 
     
@@ -44,7 +43,6 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
 
     meanDiff.shuffle = [];
     meanDiff.control = [];
-    sparsity = struct;
     ONcellInds = [];
     OFFcellInds = [];
     for pp = 1:length(populationNodes)
@@ -87,10 +85,10 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
             shuffleCenterSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Center-Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
 
             figure(30);
-            fh = subplot(3,3,pp);
+            fh = subplot(5,5,pp);
             measuredResponse = controlCenterSurround.mean;
             linSum = controlCenter.mean + controlSurround.mean;
-            binAndPlotPopulationData(measuredResponse,linSum,50,fh,'b')
+            binAndPlotPopulationData(measuredResponse,linSum,50,fh,'b','')
             limDown = min([measuredResponse,linSum]); limUp = max([measuredResponse,linSum]);
             addLineToAxis([limDown,limUp],[limDown,limUp],'unity',fh,'k','--','none');
             if pp == length(populationNodes)
@@ -317,16 +315,6 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
                 
             end %eg cell plots
         end %for images
-        
-        [~, sparsity.controlCenter(pp)] = getActivityRatio(fixationResponses(1,:));
-        [~, sparsity.controlSurround(pp)] = getActivityRatio(fixationResponses(2,:));
-        [~, sparsity.controlCenterSurround(pp)] = getActivityRatio(fixationResponses(3,:));
-        [~, sparsity.controlLinSum(pp)] = getActivityRatio(fixationResponses(1,:) + fixationResponses(2,:));
-
-        [~, sparsity.shuffleCenter(pp)] = getActivityRatio(fixationResponses(4,:));
-        [~, sparsity.shuffleSurround(pp)] = getActivityRatio(fixationResponses(5,:));
-        [~, sparsity.shuffleCenterSurround(pp)] = getActivityRatio(fixationResponses(6,:));
-        [~, sparsity.shuffleLinSum(pp)] = getActivityRatio(fixationResponses(4,:) + fixationResponses(5,:));
 
         meanDiff.control(pp) = mean((fixationResponses(1,:) + fixationResponses(2,:)) - fixationResponses(3,:));
         meanDiff.shuffle(pp) = mean((fixationResponses(4,:) + fixationResponses(5,:)) - fixationResponses(6,:));
@@ -344,7 +332,8 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     addLineToAxis(meanON_x + [errON_x, -errON_x],[meanON_y meanON_y],'ONerr_x',fig7,'b','-','none')
     addLineToAxis([meanON_x meanON_x],meanON_y + [errON_y, -errON_y],'ONerr_y',fig7,'b','-','none')
     %       pop stats:
-    [~,p] = ttest(meanDiff.control(ONcellInds),meanDiff.shuffle(ONcellInds));
+%     [~,p] = ttest(meanDiff.control(ONcellInds),meanDiff.shuffle(ONcellInds));
+    [p,~] = signrank(meanDiff.control(ONcellInds),meanDiff.shuffle(ONcellInds));
     disp('Control vs. shuffled On:')
     disp(['p = ',num2str(p)])
     disp(['n = ',num2str(length(ONcellInds))])
@@ -360,7 +349,8 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     addLineToAxis(meanOFF_x + [errOFF_x, -errOFF_x],[meanOFF_y meanOFF_y],'OFFerr_x',fig7,'r','-','none')
     addLineToAxis([meanOFF_x meanOFF_x],meanOFF_y + [errOFF_y, -errOFF_y],'OFFerr_y',fig7,'r','-','none')
     %       pop stats:
-    [~,p] = ttest(meanDiff.control(OFFcellInds),meanDiff.shuffle(OFFcellInds));
+%     [~,p] = ttest(meanDiff.control(OFFcellInds),meanDiff.shuffle(OFFcellInds));
+    [p,~] = signrank(meanDiff.control(OFFcellInds),meanDiff.shuffle(OFFcellInds));
     disp('Control vs. shuffled Off:')
     disp(['p = ',num2str(p)])
     disp(['n = ',num2str(length(OFFcellInds))])
@@ -412,65 +402,6 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
         
         figID = ['CSNIL_imageHistogram_',recID];
         makeAxisStruct(fig12,figID ,'RFSurroundFigs')
-        
-        figID = ['CSNIL_sparsity_',recID];
-        makeAxisStruct(fig13,figID ,'RFSurroundFigs')
+
     end
 end
-
-
-
-
-
-%PORTED OVER THIS CODE FROM doCSLNAnalysis. Seems like it belongs here more
-%natural image luminances in 2D space
-% %             load('~/Documents/MATLAB/turner-package/resources/SaccadeLuminanceTrajectoryStimuli_20160919.mat')
-% %             numberOfBins_em = 100^2;
-% %             centerGenSignal = [];
-% %             surroundGenSignal = [];
-% %             allCStim = [];
-% %             allSStim = [];
-% %             for ss = 1:length(luminanceData)
-% %                 cStim = resample(luminanceData(ss).centerTrajectory,center.sampleRate,200);
-% %                 cStim = (cStim) ./ luminanceData(ss).ImageMax; %stim as presented
-% % 
-% %                 %convert to contrast (relative to mean) for filter convolution
-% %                 imMean = (luminanceData(ss).ImageMean  ./ luminanceData(ss).ImageMax);
-% %                 cStim = (cStim - imMean) / imMean;
-% %                 allCStim = cat(2,allCStim,cStim);
-% % 
-% %                 linearPrediction = conv(cStim,center.LinearFilter);
-% %                 linearPrediction = linearPrediction(1:length(cStim));
-% %                 centerGenSignal = cat(2,centerGenSignal,linearPrediction);
-% % 
-% %                 sStim = resample(luminanceData(ss).surroundTrajectory,surround.sampleRate,200);
-% % 
-% %                 sStim = (sStim) ./ luminanceData(ss).ImageMax; %stim as presented
-% % 
-% %                 %convert to contrast (relative to mean) for filter convolution
-% %                 imMean = (luminanceData(ss).ImageMean  ./ luminanceData(ss).ImageMax);
-% %                 sStim = (sStim - imMean) / imMean;
-% %                 allSStim = cat(2,allSStim,sStim);
-% % 
-% %                 linearPrediction = conv(sStim,surround.LinearFilter);
-% %                 linearPrediction = linearPrediction(1:length(sStim));
-% %                 surroundGenSignal = cat(2,surroundGenSignal,linearPrediction);
-% %             end
-% % 
-% %             figure; clf; fig19=gca; %2D stimulus space with eye movements
-% %             set(gcf, 'WindowStyle', 'docked')
-% %             set(fig19,'XScale','linear','YScale','linear')
-% %             set(0, 'DefaultAxesFontSize', 12)
-% %             set(get(fig19,'XLabel'),'String','Center gen. signal')
-% %             set(get(fig19,'YLabel'),'String','Surround gen. signal')
-% %             set(get(fig19,'YLabel'),'String','Probability')
-% %             [N,Xedges,Yedges] = histcounts2(centerGenSignal,surroundGenSignal,sqrt(numberOfBins_em),...
-% %                 'Normalization','probability');
-% %             Ccenters = Xedges(1:end-1) + diff(Xedges);
-% %             Scenters = Yedges(1:end-1) + diff(Yedges);
-% %             surf(Ccenters,Scenters,log10(N))
-% % %             histogram2(centerGenSignal,surroundGenSignal,sqrt(numberOfBins_em),...
-% % %                 'Normalization','probability','ShowEmptyBins','on','FaceColor','flat');
-% %             colormap(hot)
-% %             xlabel('Center'); ylabel('Surround'); zlabel('Probability')
-% %             colorbar

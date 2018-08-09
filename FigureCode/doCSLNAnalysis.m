@@ -345,7 +345,8 @@ function doCSLNAnalysis(node,varargin)
     addLineToAxis(meanON_x,meanON_y,'ONmean',fig5,'b','none','.')
     addLineToAxis(meanON_x + [errON_x, -errON_x],[meanON_y, meanON_y],'ONerr_x',fig5,'b','-','none')
     addLineToAxis([meanON_x, meanON_x],meanON_y + [errON_y, -errON_y],'ONerr_y',fig5,'b','-','none')
-    [~,p] = ttest(rSquaredValues.indep(ONcellInds), rSquaredValues.shared(ONcellInds));
+%     [~,p] = ttest(rSquaredValues.indep(ONcellInds), rSquaredValues.shared(ONcellInds));
+    [p,~] = signrank(rSquaredValues.indep(ONcellInds), rSquaredValues.shared(ONcellInds));
     disp('Shared vs. Indep. On:')
     disp(['p = ',num2str(p)])
     
@@ -359,7 +360,8 @@ function doCSLNAnalysis(node,varargin)
     addLineToAxis(meanOFF_x,meanOFF_y,'OFFmean',fig5,'r','none','.')
     addLineToAxis(meanOFF_x + [errOFF_x, -errOFF_x],[meanOFF_y, meanOFF_y],'OFFerr_x',fig5,'r','-','none')
     addLineToAxis([meanOFF_x, meanOFF_x],meanOFF_y + [errOFF_y, -errOFF_y],'OFFerr_y',fig5,'r','-','none')
-    [~, p] = ttest(rSquaredValues.indep(OFFcellInds), rSquaredValues.shared(OFFcellInds));
+%     [~, p] = ttest(rSquaredValues.indep(OFFcellInds), rSquaredValues.shared(OFFcellInds));
+    [p, ~] = signrank(rSquaredValues.indep(OFFcellInds), rSquaredValues.shared(OFFcellInds));
     disp('Shared vs. Indep. Off:')
     disp(['p = ',num2str(p)])
     
@@ -377,7 +379,8 @@ function doCSLNAnalysis(node,varargin)
     addLineToAxis(meanON_x,meanON_y,'ONmean',fig10,'b','none','.')
     addLineToAxis(meanON_x + [errON_x, -errON_x],[meanON_y, meanON_y],'ONerr_x',fig10,'b','-','none')
     addLineToAxis([meanON_x, meanON_x],meanON_y + [errON_y, -errON_y],'ONerr_y',fig10,'b','-','none')
-    [~, p] = ttest(rSquaredValues.threeNL(ONcellInds), rSquaredValues.shared(ONcellInds));
+%     [~, p] = ttest(rSquaredValues.threeNL(ONcellInds), rSquaredValues.shared(ONcellInds));
+    [p, ~] = signrank(rSquaredValues.threeNL(ONcellInds), rSquaredValues.shared(ONcellInds));
     disp('Shared vs. ThreeNL On:')
     disp(['p = ',num2str(p)])
     
@@ -390,7 +393,8 @@ function doCSLNAnalysis(node,varargin)
     addLineToAxis(meanOFF_x,meanOFF_y,'OFFmean',fig10,'r','none','.')
     addLineToAxis(meanOFF_x + [errOFF_x, -errOFF_x],[meanOFF_y, meanOFF_y],'OFFerr_x',fig10,'r','-','none')
     addLineToAxis([meanOFF_x, meanOFF_x],meanOFF_y + [errOFF_y, -errOFF_y],'OFFerr_y',fig10,'r','-','none')
-    [~, p] = ttest(rSquaredValues.threeNL(OFFcellInds), rSquaredValues.shared(OFFcellInds));
+%     [~, p] = ttest(rSquaredValues.threeNL(OFFcellInds), rSquaredValues.shared(OFFcellInds));
+    [p, ~] = signrank(rSquaredValues.threeNL(OFFcellInds), rSquaredValues.shared(OFFcellInds));
     disp('Shared vs. ThreeNL Off:')
     disp(['p = ',num2str(p)])
     
@@ -419,6 +423,10 @@ function doCSLNAnalysis(node,varargin)
     disp('Surr. weight corr with improvement, OFF:')
     disp([rho, pval])
     
+    
+    [p, ~] = ranksum(rSquaredValues.shared(ONcellInds),rSquaredValues.shared(OFFcellInds));
+    disp('Shared On vs shared Off, ranksum:')
+    disp(['p = ',num2str(p)])
 
     recID = getRecordingTypeFromEpochList(currentNode.epochList);
     if (exportFigs)
