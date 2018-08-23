@@ -26,6 +26,10 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
     figure; clf; fig6=gca; initFig(fig6,'Time','trial') % Raster: disc, none
     figure; clf; fig7=gca; initFig(fig7,'Time','trial') % Raster: disc, corr
     figure; clf; fig8=gca; initFig(fig8,'Time','trial') % Raster: disc, acorr
+    
+    figure; clf; fig9=gca; initFig(fig9,'Time','Sp/s') % PSTH: none
+    figure; clf; fig10=gca; initFig(fig10,'Time','Sp/s') % PSTH: corr
+    figure; clf; fig11=gca; initFig(fig11,'Time','Sp/s') % PSTH: acorr
         
     populationNodes = {};
     ct = 0;
@@ -75,12 +79,21 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
                         case 1 %acorr
                             addRastersToFigure(imageTrace.binary,fig5)
                             addRastersToFigure(discTrace.binary,fig8)
+                            
+                            addLineToAxis(imageTrace.timeVector,imageTrace.mean,'image',fig11,'k','-','none')
+                            addLineToAxis(discTrace.timeVector,discTrace.mean,'disc',fig11,[0.4 0.4 0.4],'-','none')
                         case 2 %corr
                             addRastersToFigure(imageTrace.binary,fig4)
                             addRastersToFigure(discTrace.binary,fig7)
+                            
+                            addLineToAxis(imageTrace.timeVector,imageTrace.mean,'image',fig10,'k','-','none')
+                            addLineToAxis(discTrace.timeVector,discTrace.mean,'disc',fig10,[0.4 0.4 0.4],'-','none')
                         case 3 %none
                             addRastersToFigure(imageTrace.binary,fig3)
                             addRastersToFigure(discTrace.binary,fig6)
+                            
+                            addLineToAxis(imageTrace.timeVector,imageTrace.mean,'image',fig9,'k','-','none')
+                            addLineToAxis(discTrace.timeVector,discTrace.mean,'disc',fig9,[0.4 0.4 0.4],'-','none')
                     end
                     
                 end
@@ -124,5 +137,9 @@ function doFlashedGratingCorrelatedSurroundAnalysis(node,varargin)
         makeAxisStruct(fig6,'FGcorrS_rast_dn' ,'RFSurroundFigs')
         makeAxisStruct(fig7,'FGcorrS_rast_dc' ,'RFSurroundFigs')
         makeAxisStruct(fig8,'FGcorrS_rast_da' ,'RFSurroundFigs')
+        
+        makeAxisStruct(fig9,'FGcorrS_psth_none' ,'RFSurroundFigs')
+        makeAxisStruct(fig10,'FGcorrS_psth_corr' ,'RFSurroundFigs')
+        makeAxisStruct(fig11,'FGcorrS_psth_acorr' ,'RFSurroundFigs')
     end
 end
