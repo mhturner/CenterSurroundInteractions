@@ -45,6 +45,8 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
     meanDiff.control = [];
     ONcellInds = [];
     OFFcellInds = [];
+    
+    CenterSurroundNaturalImageLuminance = cell(1,length(populationNodes));
     for pp = 1:length(populationNodes)
         cellInfo = getCellInfoFromEpochList(populationNodes{pp}.epochList);
         recType = getRecordingTypeFromEpochList(populationNodes{pp}.epochList);
@@ -84,6 +86,7 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
             shuffleSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
             shuffleCenterSurround = getMeanResponseTrace(shuffleCSNode.childBySplitValue('Center-Surround').epochList,recType,'attachSpikeBinary',attachSpikeBinary);
 
+            
             figure(30);
             fh = subplot(5,5,pp);
             measuredResponse = controlCenterSurround.mean;
@@ -125,6 +128,22 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
             saccadeTimes = round(saccadeTimes);
             noFixations = currentNode.epochList.firstValue.protocolSettings('stimTime') / ...
                 currentNode.epochList.firstValue.protocolSettings('fixationDuration');
+            
+            
+            % mean responses & stimuli for data structure
+            CenterSurroundNaturalImageLuminance{pp}.response.controlCenter = getBaselineSubtractedResponseMatrix(controlCSNode.childBySplitValue('Center').epochList);
+            CenterSurroundNaturalImageLuminance{pp}.response.controlSurround = getBaselineSubtractedResponseMatrix(controlCSNode.childBySplitValue('Surround').epochList);
+            CenterSurroundNaturalImageLuminance{pp}.response.controlCenterSurround = getBaselineSubtractedResponseMatrix(controlCSNode.childBySplitValue('Center-Surround').epochList);
+            
+            CenterSurroundNaturalImageLuminance{pp}.stimulus.controlCenter = getStimulusTrace(controlCSNode.childBySplitValue('Center').epochList,saccadeTimes,'CenterIntensity');
+            CenterSurroundNaturalImageLuminance{pp}.stimulus.controlSurround = getStimulusTrace(controlCSNode.childBySplitValue('Surround').epochList,saccadeTimes,'SurroundIntensity');
+
+            CenterSurroundNaturalImageLuminance{pp}.response.shuffleCenter = getBaselineSubtractedResponseMatrix(shuffleCSNode.childBySplitValue('Center').epochList);
+            CenterSurroundNaturalImageLuminance{pp}.response.shuffleSurround = getBaselineSubtractedResponseMatrix(shuffleCSNode.childBySplitValue('Surround').epochList);
+            CenterSurroundNaturalImageLuminance{pp}.response.shuffleCenterSurround = getBaselineSubtractedResponseMatrix(shuffleCSNode.childBySplitValue('Center-Surround').epochList);
+
+            CenterSurroundNaturalImageLuminance{pp}.stimulus.shuffleSurround = getStimulusTrace(shuffleCSNode.childBySplitValue('Surround').epochList,saccadeTimes,'SurroundIntensity');
+            
   
             % get fixation responses for this image
             for ff = 1:noFixations
@@ -320,6 +339,8 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
         meanDiff.shuffle(pp) = mean((fixationResponses(4,:) + fixationResponses(5,:)) - fixationResponses(6,:));
     end
     
+    save('CenterSurroundNaturalImageLuminance.mat','CenterSurroundNaturalImageLuminance','ONcellInds', 'OFFcellInds')
+    
     %Population data:
     %   On...
     addLineToAxis(meanDiff.control(ONcellInds),meanDiff.shuffle(ONcellInds),...
@@ -404,4 +425,15 @@ function doCSNaturalImageLuminanceAnalysis(node,varargin)
         makeAxisStruct(fig12,figID ,'RFSurroundFigs')
 
     end
+end
+
+
+function stimulusTrace = getStimulusTrace(epochList,saccadeTimes,settingString)
+fixationDuration = epochList.firstValue.protocolSettings('fixationDuration') / 1e3;
+startPoint = saccadeTimes(1);
+fixationPoints = fixationDuration * epochList.firstValue.protocolSettings('sampleRate');
+pad = ones(1,startPoint) .* epochList.firstValue.protocolSettings('backgroundIntensity');
+
+stimulusTrace = convertJavaArrayList(epochList.firstValue.protocolSettings(settingString));
+stimulusTrace = [pad, kron(stimulusTrace,ones(1,fixationPoints)), pad];
 end
