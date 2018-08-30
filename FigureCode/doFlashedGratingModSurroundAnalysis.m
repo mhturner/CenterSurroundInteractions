@@ -53,7 +53,6 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
         end
     end
     popDiffMatrix = [];
-    FlashedGratingModulatedSurround = [];
     for pp = 1:length(populationNodes)
         cellNode = populationNodes{pp};
         thisCellIsExample = 0;
@@ -72,7 +71,7 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
         surroundContrastValues = nan(1,noSurrounds);
         gratingContrastValues = nan(noGratingContrasts,1);
         
-        FlashedGratingModulatedSurround{pp} = cell(noGratingContrasts,noSurrounds);
+        newCellResponse = cell(noGratingContrasts,noSurrounds);
         for ii = 1:noGratingContrasts %for each gratingContrast
             gratingNode = cellNode.children(ii);
             gratingContrastValues(ii) = gratingNode.splitValue;
@@ -99,21 +98,21 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
                 %grating data matrix:
                 gratingResponse = riekesuite.getResponseMatrix(surroundNode.childBySplitValue('image').epochList,amp);
                 baselines = mean(gratingResponse(:,1:baselinePoints),2); %baseline for each trial
-                FlashedGratingModulatedSurround{pp}{ii,ss}.gratingResponse = gratingResponse - repmat(baselines,1,size(gratingResponse,2));
+                newCellResponse{ii,ss}.gratingResponse = gratingResponse - repmat(baselines,1,size(gratingResponse,2));
                 if strcmp(recType,'extracellular')
                     %get spike binary matrices, too
                     tempTrace = getMeanResponseTrace(surroundNode.childBySplitValue('image').epochList,recType,'attachSpikeBinary',true);
-                    FlashedGratingModulatedSurround{pp}{ii,ss}.gratingResponse_binary = tempTrace.binary;
+                    newCellResponse{ii,ss}.gratingResponse_binary = tempTrace.binary;
                 end
                 
                 %no grating data matrix:
                 noGratingResponse = riekesuite.getResponseMatrix(surroundNode.childBySplitValue('intensity').epochList,amp);
                 baselines = mean(noGratingResponse(:,1:baselinePoints),2); %baseline for each trial
-                FlashedGratingModulatedSurround{pp}{ii,ss}.noGratingResponse = noGratingResponse - repmat(baselines,1,size(noGratingResponse,2));
+                newCellResponse{ii,ss}.noGratingResponse = noGratingResponse - repmat(baselines,1,size(noGratingResponse,2));
                 if strcmp(recType,'extracellular')
                     %get spike binary matrices, too
                     tempTrace = getMeanResponseTrace(surroundNode.childBySplitValue('intensity').epochList,recType,'attachSpikeBinary',true);
-                    FlashedGratingModulatedSurround{pp}{ii,ss}.noGratingResponse_binary = tempTrace.binary;
+                    newCellResponse{ii,ss}.noGratingResponse_binary = tempTrace.binary;
                 end
                 
                 
@@ -219,8 +218,13 @@ function doFlashedGratingModSurroundAnalysis(node,varargin)
         GratingContrast{pp} = gratingContrastValues;
         SurroundContrast{pp} = surroundContrastValues;
         popDiffMatrix = cat(3,popDiffMatrix, DiffMatrix);
+        
+        FlashedGratingModulatedSurround(pp).responses = newCellResponse;
+        FlashedGratingModulatedSurround(pp).GratingContrast = gratingContrastValues;
+        FlashedGratingModulatedSurround(pp).SurroundContrast = surroundContrastValues;
+        
     end %for cell
-    save(['FlashedGratingModulatedSurround_', cellInfo.cellType,'_', recType,'.mat'],'FlashedGratingModulatedSurround','GratingContrast','SurroundContrast')
+    save(['FlashedGratingModulatedSurround_', cellInfo.cellType,'_', recType,'.mat'],'FlashedGratingModulatedSurround')
     %population NLI stats:
     meanPop = nanmean(popDiffMatrix,3);
     stdPop = nanstd(popDiffMatrix,[],3);

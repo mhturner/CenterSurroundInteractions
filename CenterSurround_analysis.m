@@ -228,7 +228,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doFlashedGratingModSurroundAnalysis(parentNode,...
-    'metric','integrated','exportFigs',true);
+    'metric','integrated','exportFigs',false);
 
 %% FLASHED GRATING CORRELATED SURROUND: tree
 list = loader.loadEpochList([dataFolder,'FlashedGratingCorrelatedSurround.mat'],dataFolder);
