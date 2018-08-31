@@ -199,7 +199,7 @@ gui = epochTreeGUI(tree);
 clc; CloseAllFiguresExceptGUI();
 parentNode = gui.getSelectedEpochTreeNodes{1};
 doLEDModSurroundAnalysis(parentNode,...
-    'metric','integrated','figureID' ,'OFFspk_ct');
+    'metric','integrated','figureID' ,'');
 
 % ,'figureID','OFFspk'
 % ,'figureID' ,'OFFspk_ct'

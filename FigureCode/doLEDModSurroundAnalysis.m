@@ -66,6 +66,10 @@ function doLEDModSurroundAnalysis(node,varargin)
         cellNode = populationNodes{pp};
         cellInfo = getCellInfoFromEpochList(cellNode.epochList);
         recType = getRecordingTypeFromEpochList(cellNode.epochList);
+        patchWithinCellCount = 0;
+        
+        newCellResponse = cell(1,1);
+        newImages = cell(1,1);
         for ii = 1:cellNode.children.length %for each image
             imageNode = cellNode.children(ii);
             noPatches = imageNode.children.length;
@@ -80,9 +84,9 @@ function doLEDModSurroundAnalysis(node,varargin)
             pCorrect.timingCode = nan(noPatches,noSurrounds-1);
             pCorrect.countCode = nan(noPatches,noSurrounds-1);
             
-
             surroundContrastValues = nan(noPatches,noSurrounds-1);
             for ll = 1:noPatches
+                patchWithinCellCount = patchWithinCellCount + 1;
                 patchCt = patchCt + 1;
                 patchNode = imageNode.children(ll);
                 parameterizedSurroundContrasts = convertJavaArrayList(...
@@ -111,6 +115,7 @@ function doLEDModSurroundAnalysis(node,varargin)
                        imageResponseMatrix.disc.mean(ll,putInd) = discResp.(metric).mean;
                        imageResponseMatrix.disc.err(ll,putInd) = discResp.(metric).SEM;
                        surroundContrastValues(ll,putInd) = currentSurroundContrast;
+                       
                     else %natural surround
                         NLIvalues.naturalSurround(patchCt) = newNLIvalue;
                         resp_natSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
@@ -118,6 +123,17 @@ function doLEDModSurroundAnalysis(node,varargin)
                     if currentSurroundContrast == 0
                        resp_noSurround(patchCt,:) = [imageResp.(metric).mean, discResp.(metric).mean];
                     end
+                    
+                    % Data structures
+                    tempTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('image').epochList,recType,'attachSpikeBinary',true);
+                    newCellResponse{patchWithinCellCount,putInd}.imageResponse = tempTrace.binary;
+
+                    tempTrace = getMeanResponseTrace(patchNode.children(ss).childBySplitValue('intensity').epochList,recType,'attachSpikeBinary',true);
+                    newCellResponse{patchWithinCellCount,putInd}.discResponse = tempTrace.binary;
+               
+                    patchLocation = str2num(patchNode.splitValue);
+                    imageRes = getNaturalImagePatchFromLocation(patchLocation,imageNode.splitValue,'imageSize',[250 250]);
+                    newImages{patchWithinCellCount} = imageRes.images{1};
 
                     if patchNode.custom.get('isExample')
                         addLineToAxis(0,0,cellInfo.cellID,fig2,'k','none','none')
@@ -159,6 +175,7 @@ function doLEDModSurroundAnalysis(node,varargin)
                     end %end if example
                 end %for surround
 
+
                 %NLI vs (Ic - Is)
                 backgroundInt = patchNode.epochList.firstValue.protocolSettings('backgroundIntensity');
                 discInt = patchNode.epochList.firstValue.protocolSettings('equivalentIntensity');
@@ -180,7 +197,6 @@ function doLEDModSurroundAnalysis(node,varargin)
                     patchLocation = str2num(patchNode.splitValue);
                     imageRes = getNaturalImagePatchFromLocation(patchLocation,imageNode.splitValue,'imageSize',[250 250]);
                     figure(30); imagesc(imageRes.images{1}); colormap(gray); axis image; axis off;
-                    presentedContrasts = surroundContrastValues(ll,:); 
                     
                     % colorbar image
                     temp = nan(1,9,3);
@@ -218,8 +234,13 @@ function doLEDModSurroundAnalysis(node,varargin)
                 end %if example plotting
             end %for patch location
         end %for image
+        
+        LinearEquivalentDiscModSurround(pp).Responses = newCellResponse;
+        LinearEquivalentDiscModSurround(pp).Image = newImages;
+        LinearEquivalentDiscModSurround(pp).SurroundContrast = surroundContrastValues(1,:);
 
     end %for cell
+    save('Figure 2 - Source Data 1.mat','LinearEquivalentDiscModSurround');
 
     %NLI vs (Ic - Is)
 %     binAndPlotEquallyPopulatedBins(AllIntDiff(:),AllNLI(:), 9, fig13)
